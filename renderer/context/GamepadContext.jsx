@@ -19,6 +19,44 @@ export function GamepadProvider({ children }) {
   const stateRef = useRef({ buttons: {}, axes: {}, lastTrigger: {} });
   const requestRef = useRef();
 
+  // State for Input Mode
+  const inputModeRef = useRef('mouse');
+  const [inputMode, setInputModeState] = useState('mouse');
+
+  const setInputMode = useCallback((mode) => {
+    if (inputModeRef.current !== mode) {
+      inputModeRef.current = mode;
+      setInputModeState(mode);
+    }
+  }, []);
+
+  // Listen to keyboard/mouse to switch mode
+  useEffect(() => {
+    const handleMouseOrKey = (e) => {
+      if (e.type === 'keydown' && !e.isTrusted) return; // ignore our synthesized gamepads
+      if (e.type === 'mousemove' && Math.abs(e.movementX) < 2 && Math.abs(e.movementY) < 2) return; // ignore jitter
+      setInputMode('mouse');
+    };
+    window.addEventListener('mousemove', handleMouseOrKey);
+    window.addEventListener('mousedown', handleMouseOrKey);
+    window.addEventListener('keydown', handleMouseOrKey);
+    return () => {
+      window.removeEventListener('mousemove', handleMouseOrKey);
+      window.removeEventListener('mousedown', handleMouseOrKey);
+      window.removeEventListener('keydown', handleMouseOrKey);
+    };
+  }, [setInputMode]);
+
+  const PROMPT_DICT = {
+    xbox: { A: 'A', B: 'B', X: 'X', Y: 'Y', LB: 'LB', RB: 'RB', LT: 'LT', RT: 'RT', UP: 'D-Pad Up' },
+    ps: { A: '✕', B: '◯', X: '◻', Y: '△', LB: 'L1', RB: 'R1', LT: 'L2', RT: 'R2', UP: 'D-Pad Up' },
+    generic: { A: 'Confirm', B: 'Cancel', X: 'Action 1', Y: 'Action 2', LB: 'Prev', RB: 'Next', LT: 'Scroll Up', RT: 'Scroll Down', UP: 'Up' }
+  };
+
+  const getPromptLabel = useCallback((logicalKey) => {
+    return PROMPT_DICT[promptStyle]?.[logicalKey] || logicalKey;
+  }, [promptStyle]);
+
   // Load/Save settings (we would normally use arcadiaAPI.settings here)
   useEffect(() => {
     if (window.arcadiaAPI) {
@@ -86,13 +124,19 @@ export function GamepadProvider({ children }) {
     };
   }, [activeGamepadId, vibrate]);
 
-  // 2D Spatial Navigation
+  // 2D Spatial Navigation with Modal Focus Trapping
   const moveFocus = useCallback((direction) => {
-    const focusable = Array.from(document.querySelectorAll('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'))
+    // 1. Detect if a modal is open to trap focus inside it (Section 31: Modal Focus)
+    const activeModal = document.querySelector('.game-editor-overlay, .modal-overlay');
+    const searchRoot = activeModal || document;
+
+    const focusable = Array.from(searchRoot.querySelectorAll('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'))
       .filter(el => !el.disabled && el.offsetParent !== null && window.getComputedStyle(el).visibility !== 'hidden');
     
     if (focusable.length === 0) return;
     const active = document.activeElement;
+    
+    // 2. If focus is lost or outside the modal, force it into the modal
     if (!active || !focusable.includes(active)) {
       focusable[0].focus();
       return;
@@ -202,10 +246,17 @@ export function GamepadProvider({ children }) {
         const scrollable = document.querySelector('.app-content') || document.documentElement;
         scrollable.scrollBy({ top: (rt - lt) * 20, behavior: 'auto' });
       }
+
+      // Input Mode Detection
+      const hasAxis = axes && axes.some(a => Math.abs(a) > analogSensitivity);
+      const hasButton = gp.buttons.some(b => b.pressed);
+      if (hasAxis || hasButton) {
+        setInputMode('gamepad');
+      }
     }
 
     requestRef.current = requestAnimationFrame(updateLoop);
-  }, [activeGamepadId, analogSensitivity, triggerSensitivity, handleInput]);
+  }, [activeGamepadId, analogSensitivity, triggerSensitivity, handleInput, setInputMode]);
 
   useEffect(() => {
     requestRef.current = requestAnimationFrame(updateLoop);
@@ -222,7 +273,9 @@ export function GamepadProvider({ children }) {
       vibrationEnabled,
       promptStyle,
       updateConfig,
-      vibrate
+      vibrate,
+      inputMode,
+      getPromptLabel
     }}>
       {children}
     </GamepadContext.Provider>

@@ -9,7 +9,10 @@ const GAME_EXTENSIONS = new Set([
   '.n64', '.z64', '.rom', '.pkg', '.xbe', '.xex'
 ]);
 
-const IGNORED_DIRS = new Set(['node_modules', '.git', '.vscode', '.idea', 'AppData', 'System32']);
+const IGNORED_DIRS = new Set([
+  'node_modules', '.git', '.vscode', '.idea', 'appdata', 'system32',
+  'emulators', 'emulator', 'bios', 'sys', 'system', 'cores'
+]);
 
 class ScannerService {
   constructor() {
@@ -98,11 +101,12 @@ class ScannerService {
 
     if (this.stats.filesDiscovered % 50 === 0) this._emit();
 
+    let isEmulatorNode = false;
     if (configData) {
-      const isEmulator = configData.executable || (configData.tags && configData.tags.some(t =>
+      isEmulatorNode = configData.executable || (configData.tags && configData.tags.some(t =>
         t.toLowerCase() === 'emulator'));
 
-      if (isEmulator) {
+      if (isEmulatorNode) {
         this._registerEmulator(configData, dir, iconFile);
       } else {
         this._registerGame(configData, dir, iconFile, gameFiles);
@@ -119,9 +123,13 @@ class ScannerService {
       }
     }
 
+    // Stop traversing deeper if this directory is the root of an emulator,
+    // to prevent scanning its internal .bin files as games.
+    if (isEmulatorNode) return;
+
     for (const e of entries) {
       if (this.cancelRequested) return;
-      if (e.isDirectory() && !IGNORED_DIRS.has(e.name) && !e.name.startsWith('.')) {
+      if (e.isDirectory() && !IGNORED_DIRS.has(e.name.toLowerCase()) && !e.name.startsWith('.')) {
         await new Promise(r => setTimeout(r, 0));
         await this._crawl(path.join(dir, e.name));
       }

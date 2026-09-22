@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useTheme } from '../../theme/ThemeContext';
 import './TopBar.css';
+import arcadiaLogo from '../../assets/arcadia_top_bar_logo.png';
 
 const TABS = [
   { id: 'games', label: 'Games' },
@@ -8,9 +9,25 @@ const TABS = [
   { id: 'settings', label: 'Settings' }
 ];
 
-export default function TopBar({ activeTab, onTabChange }) {
+export default function TopBar({ 
+  activeTab, 
+  onTabChange,
+  searchQuery,
+  setSearchQuery,
+  sortBy,
+  setSortBy,
+  favoritesFirst,
+  setFavoritesFirst,
+  groupPlatforms,
+  setGroupPlatforms,
+  hideNoArt,
+  setHideNoArt,
+  tileSize,
+  setTileSize
+}) {
   const { theme, toggleTheme } = useTheme();
   const [clock, setClock] = useState('');
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
   useEffect(() => {
     function tick() {
@@ -22,30 +39,15 @@ export default function TopBar({ activeTab, onTabChange }) {
     return () => clearInterval(id);
   }, []);
 
-  // Keyboard: LB/RB tab switching (we listen for left/right arrow on topbar focus)
-  const handleKeyDown = useCallback((e) => {
-    const currentIndex = TABS.findIndex(t => t.id === activeTab);
-    if (e.key === 'ArrowRight' || e.key === 'Tab') {
-      e.preventDefault();
-      const next = (currentIndex + 1) % TABS.length;
-      onTabChange(TABS[next].id);
-    } else if (e.key === 'ArrowLeft') {
-      e.preventDefault();
-      const prev = (currentIndex - 1 + TABS.length) % TABS.length;
-      onTabChange(TABS[prev].id);
-    }
-  }, [activeTab, onTabChange]);
-
   return (
     <header className="topbar">
       {/* Brand */}
-      <div className="topbar-brand">
-        <div className="topbar-logo">A</div>
-        <span className="topbar-title">ARCADIA</span>
+      <div className="topbar-brand" onClick={() => onTabChange('games')} style={{ cursor: 'pointer' }}>
+        <img src={arcadiaLogo} alt="Arcadia" className="topbar-logo-img" />
       </div>
 
       {/* Navigation Tabs */}
-      <nav className="topbar-nav" onKeyDown={handleKeyDown}>
+      <nav className="topbar-nav">
         {TABS.map(tab => (
           <button
             key={tab.id}
@@ -70,25 +72,69 @@ export default function TopBar({ activeTab, onTabChange }) {
           </svg>
           <input 
             type="text" 
-            placeholder={activeTab === 'emulators' ? 'Search emulators...' : 'Search games...'}
+            placeholder={
+              activeTab === 'emulators' ? 'Search emulators...' : 
+              activeTab === 'settings' ? 'Search settings...' : 
+              'Search games, platforms...'
+            }
+            value={searchQuery || ''}
+            onChange={e => setSearchQuery && setSearchQuery(e.target.value)}
             tabIndex={0}
           />
         </div>
 
+        {/* View Settings (Only in Games Tab) */}
+        {activeTab === 'games' && (
+          <div className="topbar-settings-dropdown" 
+               onMouseEnter={() => setIsSettingsOpen(true)} 
+               onMouseLeave={() => setIsSettingsOpen(false)}
+               onFocus={() => setIsSettingsOpen(true)}
+               onBlur={(e) => {
+                 if (!e.currentTarget.contains(e.relatedTarget)) setIsSettingsOpen(false);
+               }}>
+            <button className="topbar-icon-btn view-btn" tabIndex={0} title="Library Settings" onClick={() => setIsSettingsOpen(!isSettingsOpen)}>
+              ⚙️ View
+            </button>
+            
+            {isSettingsOpen && (
+              <div className="topbar-settings-menu">
+                <div className="menu-group">
+                  <label>Sort By</label>
+                  <select value={sortBy} onChange={e => setSortBy && setSortBy(e.target.value)} tabIndex={0}>
+                    <option value="name_asc">Sort A-Z</option>
+                    <option value="recent_played">Recently Played</option>
+                    <option value="recent_added">Recently Added</option>
+                    <option value="platform">By Platform</option>
+                  </select>
+                </div>
 
+                <div className="menu-group">
+                  <label>Tile Size</label>
+                  <select value={tileSize} onChange={e => setTileSize && setTileSize(e.target.value)} tabIndex={0}>
+                    <option value="sm">Small Tiles</option>
+                    <option value="md">Medium Tiles</option>
+                    <option value="lg">Large Tiles</option>
+                  </select>
+                </div>
 
-        {/* Settings gear */}
-        <button 
-          className="topbar-icon-btn"
-          onClick={() => onTabChange('settings')}
-          title="Settings"
-          tabIndex={0}
-        >
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <circle cx="12" cy="12" r="3"/>
-            <path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/>
-          </svg>
-        </button>
+                <div className="menu-divider"></div>
+
+                <label className="menu-toggle" tabIndex={0} onKeyDown={e => { if (e.key === 'Enter' && setFavoritesFirst) setFavoritesFirst(!favoritesFirst) }}>
+                  <input type="checkbox" checked={favoritesFirst || false} onChange={e => setFavoritesFirst && setFavoritesFirst(e.target.checked)} tabIndex={-1} />
+                  <span>Favorites First</span>
+                </label>
+                <label className="menu-toggle" tabIndex={0} onKeyDown={e => { if (e.key === 'Enter' && setGroupPlatforms) setGroupPlatforms(!groupPlatforms) }}>
+                  <input type="checkbox" checked={groupPlatforms || false} onChange={e => setGroupPlatforms && setGroupPlatforms(e.target.checked)} tabIndex={-1} />
+                  <span>Group Platforms</span>
+                </label>
+                <label className="menu-toggle" tabIndex={0} onKeyDown={e => { if (e.key === 'Enter' && setHideNoArt) setHideNoArt(!hideNoArt) }}>
+                  <input type="checkbox" checked={hideNoArt || false} onChange={e => setHideNoArt && setHideNoArt(e.target.checked)} tabIndex={-1} />
+                  <span>Hide Missing Art</span>
+                </label>
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Clock */}
         <span className="topbar-clock">{clock}</span>

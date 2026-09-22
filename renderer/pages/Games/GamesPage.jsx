@@ -2,50 +2,54 @@ import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react'
 import GameEditor from '../../components/GameEditor/GameEditor';
 import './GamesPage.css';
 
-export default function GamesPage() {
+export default function GamesPage({ 
+  searchQuery, 
+  sortBy, 
+  favoritesFirst, 
+  groupPlatforms, 
+  hideNoArt, 
+  tileSize 
+}) {
   const [games, setGames] = useState([]);
   const [emulators, setEmulators] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  // Display State
-  const [searchQuery, setSearchQuery] = useState('');
-  const [sortBy, setSortBy] = useState('name_asc'); // name_asc, recent_played, recent_added
-  const [favoritesFirst, setFavoritesFirst] = useState(true);
-  const [groupPlatforms, setGroupPlatforms] = useState(false);
-  const [hideNoArt, setHideNoArt] = useState(false);
-  const [tileSize, setTileSize] = useState('md'); // sm, md, lg
-
   // Interaction State
   const [focusedGame, setFocusedGame] = useState(null);
-  const [isEditing, setIsEditing] = useState(false);
   const [editingGame, setEditingGame] = useState(null);
+  const [isEditing, setIsEditing] = useState(false);
 
   const loadData = useCallback(async () => {
     if (!window.arcadiaAPI) return;
-    const [gamesRes, emuRes] = await Promise.all([
-      window.arcadiaAPI.games.getAll(),
-      window.arcadiaAPI.emulators.getAll()
-    ]);
-    
-    if (emuRes.success) setEmulators(emuRes.data);
-    if (gamesRes.success) {
-      setGames(gamesRes.data);
-      if (gamesRes.data.length > 0) {
-        setFocusedGame(prev => prev ? gamesRes.data.find(g => g.id === prev.id) || gamesRes.data[0] : gamesRes.data[0]);
-      }
+    const res = await window.arcadiaAPI.games.getAll();
+    if (res.success) {
+      setGames(res.data);
     }
+    const emuRes = await window.arcadiaAPI.emulators.getAll();
+    if (emuRes.success) setEmulators(emuRes.data);
     setLoading(false);
   }, []);
 
   useEffect(() => { loadData(); }, [loadData]);
 
+  // Keep focus on first item when loaded
+  useEffect(() => {
+    if (games.length > 0 && !focusedGame) {
+      // Find the first valid item according to current filters/sort
+      // For now just taking first available isn't perfect if filtered out, 
+      // but spatial nav handles it later
+    }
+  }, [games, focusedGame]);
+
   const handleTileClick = async (game) => {
     if (!window.arcadiaAPI) return;
     try {
-      const res = await window.arcadiaAPI.launcher.launch(game.id);
-      if (!res.success) alert('Launch Error: ' + res.error);
-    } catch (e) {
-      alert('Launch Error: ' + e.message);
+      const res = await window.arcadiaAPI.launcher.launchGame(game.id);
+      if (!res.success) {
+        alert('Launch Error: ' + res.error);
+      }
+    } catch (err) {
+      alert('Launch Error: ' + err.message);
     }
     loadData();
   };
@@ -204,40 +208,6 @@ export default function GamesPage() {
           <div className="global-hero-overlay"></div>
         </div>
       )}
-
-      {/* Search & Filter Top Bar */}
-      <div className="library-toolbar">
-        <div className="library-search-box">
-          <span className="library-search-icon">🔍</span>
-          <input 
-            type="text" 
-            placeholder="Search games, platforms, developers..." 
-            value={searchQuery}
-            onChange={e => setSearchQuery(e.target.value)}
-          />
-        </div>
-        
-        <div className="library-controls">
-          <select value={sortBy} onChange={e => setSortBy(e.target.value)}>
-            <option value="name_asc">Sort A-Z</option>
-            <option value="recent_played">Recently Played</option>
-            <option value="recent_added">Recently Added</option>
-            <option value="platform">By Platform</option>
-          </select>
-
-          <select value={tileSize} onChange={e => setTileSize(e.target.value)}>
-            <option value="sm">Small Tiles</option>
-            <option value="md">Medium Tiles</option>
-            <option value="lg">Large Tiles</option>
-          </select>
-        </div>
-
-        <div className="library-toggles">
-          <label><input type="checkbox" checked={favoritesFirst} onChange={e => setFavoritesFirst(e.target.checked)} /> Favs First</label>
-          <label><input type="checkbox" checked={groupPlatforms} onChange={e => setGroupPlatforms(e.target.checked)} /> Group Platforms</label>
-          <label><input type="checkbox" checked={hideNoArt} onChange={e => setHideNoArt(e.target.checked)} /> Hide No Art</label>
-        </div>
-      </div>
 
       <div className="library-content-area">
         <div className="library-grids">

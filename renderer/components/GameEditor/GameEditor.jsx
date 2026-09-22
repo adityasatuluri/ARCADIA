@@ -1,41 +1,51 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import './GameEditor.css';
+import { useModalFocus } from '../../hooks/useModalFocus';
 
-export default function GameEditor({ game, emulators, onClose, onSave }) {
+export default function GameEditor({ game, onClose, onSave }) {
+  const modalRef = useRef(null);
+  useModalFocus(modalRef);
+
   const [formData, setFormData] = useState({
     id: '',
+    type: 'pc',
     name: '',
     display_name: '',
-    type: 'emulator',
-    platform: '',
-    game_path: '',
+    platform: 'PC',
     executable: '',
-    arguments: '',
     working_directory: '',
-    save_path: game ? game.save_path : '',
-    icon_path: game ? game.icon_path : '',
-    background_path: game ? game.background_path : '',
-    description: game ? game.description : '',
+    arguments: '',
+    game_path: '',
+    emulator_id: '',
+    save_path: '',
+    icon_path: '',
+    background_path: '',
+    description: '',
     year: '',
-    genre: '',
     developer: '',
     publisher: '',
+    genre: '',
     tags: '',
     favorite: false,
-    notes: '',
-    emulator_id: '',
-    save_path: ''
+    notes: ''
   });
 
+  const [emulators, setEmulators] = useState([]);
   const [errors, setErrors] = useState({});
 
   useEffect(() => {
+    if (window.arcadiaAPI) {
+      window.arcadiaAPI.emulators.getAll().then(res => {
+        if (res.success) setEmulators(res.data);
+      });
+    }
+
     if (game) {
       setFormData({
         ...game,
-        genre: Array.isArray(game.genre) ? game.genre.join(', ') : '',
         tags: Array.isArray(game.tags) ? game.tags.join(', ') : '',
-        year: game.year || ''
+        genre: Array.isArray(game.genre) ? game.genre.join(', ') : '',
+        favorite: !!game.favorite
       });
     } else {
       setFormData(prev => ({ ...prev, id: 'game-' + Date.now() }));
@@ -57,10 +67,10 @@ export default function GameEditor({ game, emulators, onClose, onSave }) {
     if (!formData.platform.trim()) newErrors.platform = 'Platform is required';
 
     if (formData.type === 'pc') {
-      if (!formData.executable.trim()) newErrors.executable = 'Executable path is required for PC games';
+      if (!formData.executable.trim()) newErrors.executable = 'Executable path is required';
     } else {
-      if (!formData.game_path.trim()) newErrors.game_path = 'Game/ROM path is required';
-      if (!formData.emulator_id) newErrors.emulator_id = 'Emulator is required';
+      if (!formData.game_path.trim()) newErrors.game_path = 'Game path (ROM) is required';
+      if (!formData.emulator_id) newErrors.emulator_id = 'Emulator must be selected';
     }
 
     setErrors(newErrors);
@@ -74,8 +84,8 @@ export default function GameEditor({ game, emulators, onClose, onSave }) {
     const gameData = {
       ...formData,
       year: parseInt(formData.year) || null,
+      tags: formData.tags.split(',').map(s => s.trim()).filter(Boolean),
       genre: formData.genre.split(',').map(s => s.trim()).filter(Boolean),
-      tags: formData.tags.split(',').map(s => s.trim()).filter(Boolean)
     };
 
     onSave(gameData);
@@ -94,17 +104,14 @@ export default function GameEditor({ game, emulators, onClose, onSave }) {
   const handleBrowse = async (field, filters = [], isDir = false) => {
     if (!window.arcadiaAPI) return;
     const properties = isDir ? ['openDirectory'] : ['openFile'];
-    const path = await window.arcadiaAPI.system.showOpenDialog({
-      properties,
-      filters
-    });
+    const path = await window.arcadiaAPI.system.showOpenDialog({ properties, filters });
     if (path) {
       setFormData(prev => ({ ...prev, [field]: path }));
     }
   };
 
   return (
-    <div className="game-editor-overlay">
+    <div className="game-editor-overlay" ref={modalRef}>
       <div className="game-editor-modal">
         <div className="game-editor-header">
           <h2>{game ? 'Edit Game' : 'Add Game'}</h2>

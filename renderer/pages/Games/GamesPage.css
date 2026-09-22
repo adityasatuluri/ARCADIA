@@ -22,7 +22,7 @@
 .global-hero-bg img {
   width: 100%; height: 100%;
   object-fit: cover;
-  filter: blur(3px);
+  filter: blur(1.5px);
   transform: scale(1.05); /* Prevent edges from bleeding in blur */
 }
 .global-hero-overlay {
@@ -65,34 +65,7 @@
   outline: none;
 }
 
-.library-controls {
-  display: flex;
-  gap: 12px;
-}
-.library-controls select {
-  background: rgba(0,0,0,0.3);
-  color: #fff;
-  border: 1px solid rgba(255,255,255,0.15);
-  padding: 8px 12px;
-  border-radius: var(--radius-md);
-  font-size: 13px;
-  outline: none;
-}
-
-.library-toggles {
-  display: flex;
-  gap: 16px;
-  align-items: center;
-  font-size: 13px;
-  color: rgba(255,255,255,0.7);
-}
-.library-toggles label {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  cursor: pointer;
-}
-.library-toggles input[type="checkbox"] { cursor: pointer; }
+/* Dropdown Settings Menu - Moved to TopBar.css */
 
 /* Content Area */
 .library-content-area {

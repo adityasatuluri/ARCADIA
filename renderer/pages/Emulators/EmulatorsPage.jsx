@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import EmulatorEditor from '../../components/EmulatorEditor/EmulatorEditor';
 import './EmulatorsPage.css';
 
-export default function EmulatorsPage() {
+export default function EmulatorsPage({ searchQuery }) {
   const [emulators, setEmulators] = useState([]);
   const [loading, setLoading] = useState(true);
   const [isEditing, setIsEditing] = useState(false);
@@ -63,6 +63,15 @@ export default function EmulatorsPage() {
     }
   };
 
+  const filteredEmulators = React.useMemo(() => {
+    if (!searchQuery?.trim()) return emulators;
+    const q = searchQuery.toLowerCase();
+    return emulators.filter(emu => 
+      emu.display_name.toLowerCase().includes(q) || 
+      emu.platform.toLowerCase().includes(q)
+    );
+  }, [emulators, searchQuery]);
+
   if (loading) return null;
 
   return (
@@ -70,7 +79,7 @@ export default function EmulatorsPage() {
       <h2 className="section-label">Your Emulators</h2>
       
       <div className="emu-grid">
-        {emulators.map(emu => {
+        {filteredEmulators.map(emu => {
           const iconSrc = emu.icon_path ? `file://${emu.icon_path.replace(/\\/g, '/')}` : null;
           // Simple validation assumption for display purposes (real validation happens on launch)
           const isConfigured = Boolean(emu.executable);

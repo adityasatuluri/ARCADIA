@@ -1,7 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import '../GameEditor/GameEditor.css'; // Reuse form styles
+import { useModalFocus } from '../../hooks/useModalFocus';
 
 export default function EmulatorEditor({ emulator, onClose, onSave }) {
+  const modalRef = useRef(null);
+  useModalFocus(modalRef);
+
   const [formData, setFormData] = useState({
     id: '',
     name: '',
@@ -83,7 +87,7 @@ export default function EmulatorEditor({ emulator, onClose, onSave }) {
   };
 
   return (
-    <div className="game-editor-overlay">
+    <div className="game-editor-overlay" ref={modalRef}>
       <div className="game-editor-modal">
         <div className="game-editor-header">
           <h2>{emulator ? 'Edit Emulator' : 'Add Emulator'}</h2>
