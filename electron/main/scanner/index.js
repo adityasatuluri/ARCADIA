@@ -9,11 +9,15 @@ const GAME_EXTENSIONS = new Set([
   '.n64', '.z64', '.rom', '.pkg', '.xbe', '.xex'
 ]);
 
+const IGNORED_DIRS = new Set(['node_modules', '.git', '.vscode', '.idea', 'AppData', 'System32']);
+
 class ScannerService {
   constructor() {
     this.isScanning = false;
     this.cancelRequested = false;
-    this.stats = { filesDiscovered: 0, gamesDiscovered: 0, emulatorsDiscovered: 0, currentLocation: '' };
+    this.stats = { filesDiscovered: 0, gamesDiscovered: 0, emulatorsDiscovered: 0, currentLocation: '', phase: 'idle' };
+    this.discoveredGameIds = new Set();
+    this.discoveredEmulatorIds = new Set();
   }
 
   _emit() {
@@ -25,16 +29,30 @@ class ScannerService {
     } catch {}
   }
 
-  async scanDirectory(targetPath) {
+  async scanLibraries(targetPaths) {
     if (this.isScanning) return { success: false, error: 'Already scanning' };
 
     this.isScanning = true;
     this.cancelRequested = false;
-    this.stats = { filesDiscovered: 0, gamesDiscovered: 0, emulatorsDiscovered: 0, currentLocation: targetPath };
+    this.stats = { filesDiscovered: 0, gamesDiscovered: 0, emulatorsDiscovered: 0, currentLocation: '', phase: 'scanning' };
+    this.discoveredGameIds.clear();
+    this.discoveredEmulatorIds.clear();
     this._emit();
 
     try {
-      await this._crawl(targetPath);
+      for (const dir of targetPaths) {
+        if (this.cancelRequested) break;
+        if (!fs.existsSync(dir)) continue;
+        await this._crawl(dir);
+      }
+
+      if (!this.cancelRequested) {
+        this.stats.phase = 'cleanup';
+        this._emit();
+        this._detectMissing();
+      }
+
+      this.stats.phase = 'complete';
       this._emit();
       return { success: true, stats: { ...this.stats } };
     } catch (err) {
@@ -55,12 +73,12 @@ class ScannerService {
     try { entries = await fs.promises.readdir(dir, { withFileTypes: true }); }
     catch { return; }
 
-    // Check for config.json in this directory
     let configData = null;
     let gameFiles = [];
     let iconFile = null;
 
     for (const e of entries) {
+      if (this.cancelRequested) return;
       if (!e.isFile()) continue;
       this.stats.filesDiscovered++;
       const name = e.name.toLowerCase();
@@ -78,9 +96,8 @@ class ScannerService {
       }
     }
 
-    if (this.stats.filesDiscovered % 25 === 0) this._emit();
+    if (this.stats.filesDiscovered % 50 === 0) this._emit();
 
-    // Process config.json if found
     if (configData) {
       const isEmulator = configData.executable || (configData.tags && configData.tags.some(t =>
         t.toLowerCase() === 'emulator'));
@@ -91,7 +108,6 @@ class ScannerService {
         this._registerGame(configData, dir, iconFile, gameFiles);
       }
     } else if (gameFiles.length > 0) {
-      // Auto-generate entries for loose game files (no config.json)
       for (const gf of gameFiles) {
         const gameName = path.basename(gf, path.extname(gf));
         const parentName = path.basename(dir);
@@ -103,10 +119,10 @@ class ScannerService {
       }
     }
 
-    // Recurse into subdirectories
     for (const e of entries) {
-      if (e.isDirectory()) {
-        await new Promise(r => setTimeout(r, 0)); // yield to event loop
+      if (this.cancelRequested) return;
+      if (e.isDirectory() && !IGNORED_DIRS.has(e.name) && !e.name.startsWith('.')) {
+        await new Promise(r => setTimeout(r, 0));
         await this._crawl(path.join(dir, e.name));
       }
     }
@@ -118,8 +134,11 @@ class ScannerService {
     const icon = cfg.icon && !path.isAbsolute(cfg.icon)
       ? path.join(dir, cfg.icon) : (cfg.icon || defaultIcon || '');
 
+    const id = cfg.name || path.basename(dir).toLowerCase();
+    this.discoveredEmulatorIds.add(id);
+
     dbService.upsertEmulator({
-      id: cfg.name || path.basename(dir),
+      id: id,
       name: cfg.name || path.basename(dir),
       display_name: cfg.display_name || cfg.name || path.basename(dir),
       platform: cfg.platform || 'Unknown',
@@ -138,22 +157,31 @@ class ScannerService {
   }
 
   _registerGame(cfg, dir, defaultIcon, gameFiles) {
-    const id = cfg.name || path.basename(dir).toLowerCase().replace(/[^a-z0-9]+/g, '-');
+    let id = cfg.name || path.basename(dir).toLowerCase().replace(/[^a-z0-9]+/g, '-');
+    
+    // Prevent duplicate IDs across libraries (append dir hash if needed, but for now fallback to simple dedupe)
+    if (this.discoveredGameIds.has(id)) {
+       id = id + '-' + Math.random().toString(36).substr(2, 5);
+    }
+    
+    this.discoveredGameIds.add(id);
+
     const icon = cfg.icon && !path.isAbsolute(cfg.icon)
       ? path.join(dir, cfg.icon) : (cfg.icon || defaultIcon || '');
     const gamePath = gameFiles.length > 0 ? path.join(dir, gameFiles[0]) : '';
 
-    // Try to determine emulator from the parent folder structure
-    // e.g. Z:\gaming\games\xemu\Half-Life 2 → emulator hint is 'xemu'
     const parentFolder = path.basename(path.dirname(dir)).toLowerCase();
 
     dbService.upsertGame({
       id,
       name: cfg.name || id,
       display_name: cfg.display_name || path.basename(dir),
-      type: 'emulator',
+      type: cfg.executable ? 'pc' : 'emulator',
       platform: cfg.platform || 'Unknown',
       game_path: gamePath,
+      executable: cfg.executable || '',
+      arguments: cfg.arguments || '',
+      working_directory: cfg.working_directory || '',
       icon_path: icon,
       description: cfg.description || '',
       year: cfg.year || null,
@@ -167,6 +195,21 @@ class ScannerService {
       source_dir: dir
     });
     this.stats.gamesDiscovered++;
+  }
+
+  _detectMissing() {
+    // Only detect missing games if we successfully completed a scan
+    const allGames = dbService.getAllGames();
+    for (const game of allGames) {
+      if (game.source_dir && !this.discoveredGameIds.has(game.id)) {
+        // The game came from a scan but wasn't found in this run.
+        // Let's verify if the physical directory is gone before removing
+        if (!fs.existsSync(game.source_dir)) {
+          console.log(`[Scanner] Removing missing game: ${game.display_name}`);
+          dbService.removeGame(game.id);
+        }
+      }
+    }
   }
 }
 

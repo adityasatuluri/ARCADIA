@@ -34,8 +34,8 @@ function registerIpcHandlers() {
   });
 
   /* ======== SCANNER ======== */
-  ipcMain.handle('scanner:start', async (_, targetPath) => {
-    return await scannerService.scanDirectory(targetPath);
+  ipcMain.handle('scanner:start', async (_, targetPaths) => {
+    return await scannerService.scanLibraries(targetPaths);
   });
   ipcMain.handle('scanner:cancel', () => {
     scannerService.cancelScan();

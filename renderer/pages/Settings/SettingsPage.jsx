@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import './SettingsPage.css';
 
 const CATEGORIES = [
@@ -19,57 +19,136 @@ const CATEGORIES = [
 ];
 
 export default function SettingsPage() {
-  const [scanPath, setScanPath] = useState('Z:\\gaming');
+  const [libraryPaths, setLibraryPaths] = useState([]);
   const [scanStatus, setScanStatus] = useState('');
+  const [isScanning, setIsScanning] = useState(false);
+  const [progressData, setProgressData] = useState(null);
+
+  useEffect(() => {
+    // Load library paths from settings
+    if (!window.arcadiaAPI) return;
+    
+    window.arcadiaAPI.settings.getAll().then(res => {
+      if (res.success && res.data && res.data.library_locations) {
+        setLibraryPaths(res.data.library_locations);
+      }
+    });
+
+    // Listen to progress
+    const unsubscribe = window.arcadiaAPI.scanner.onProgress((data) => {
+      setProgressData(data);
+    });
+    return unsubscribe;
+  }, []);
+
+  const savePaths = async (newPaths) => {
+    setLibraryPaths(newPaths);
+    if (window.arcadiaAPI) {
+      await window.arcadiaAPI.settings.set('library_locations', newPaths);
+    }
+  };
+
+  const handleAddFolder = async () => {
+    if (!window.arcadiaAPI) return;
+    const path = await window.arcadiaAPI.system.showOpenDialog({ properties: ['openDirectory'] });
+    if (path && !libraryPaths.includes(path)) {
+      const newPaths = [...libraryPaths, path];
+      savePaths(newPaths);
+    }
+  };
+
+  const handleRemoveFolder = (pathToRemove) => {
+    const newPaths = libraryPaths.filter(p => p !== pathToRemove);
+    savePaths(newPaths);
+  };
 
   const runScan = async () => {
-    if (!window.arcadiaAPI || !window.arcadiaAPI.scanner) return;
-    setScanStatus('Scanning...');
-    const res = await window.arcadiaAPI.scanner.start(scanPath);
+    if (!window.arcadiaAPI || libraryPaths.length === 0) return;
+    setIsScanning(true);
+    setScanStatus('Scanning libraries...');
+    setProgressData({ phase: 'scanning', filesDiscovered: 0, gamesDiscovered: 0, emulatorsDiscovered: 0, currentLocation: '' });
+    
+    const res = await window.arcadiaAPI.scanner.start(libraryPaths);
+    
     if (res.success) {
       const s = res.stats;
       setScanStatus(`Done — ${s.gamesDiscovered} games, ${s.emulatorsDiscovered} emulators found (${s.filesDiscovered} files crawled)`);
     } else {
       setScanStatus(`Error: ${res.error}`);
     }
+    
+    setIsScanning(false);
+  };
+
+  const cancelScan = async () => {
+    if (!window.arcadiaAPI) return;
+    await window.arcadiaAPI.scanner.cancel();
+    setScanStatus('Scan cancelled.');
+    setIsScanning(false);
   };
 
   return (
     <div className="settings-page">
       <h1 className="settings-header">Settings</h1>
 
-      {/* Quick Scanner (temporarily placed here for testing) */}
-      <div className="settings-scanner">
-        <div className="settings-scanner-title">Library Scanner</div>
-        <div className="settings-scanner-row">
-          <input
-            className="settings-scanner-input"
-            type="text"
-            value={scanPath}
-            onChange={e => setScanPath(e.target.value)}
-            placeholder="Enter directory path to scan..."
-            tabIndex={0}
-          />
-          <button className="settings-scanner-btn" onClick={runScan} tabIndex={0}>
-            Start Scan
-          </button>
+      <div className="library-locations-section">
+        <h2 className="section-label" style={{ marginTop: 0 }}>Library Locations</h2>
+        <div className="library-card">
+          <p className="library-card-desc">
+            Arcadia will scan these folders for games, ROMs, and emulators. Missing games will be automatically removed from the database during a scan.
+          </p>
+          
+          <div className="library-paths-list">
+            {libraryPaths.length === 0 ? (
+              <div className="library-path-empty">No library folders configured.</div>
+            ) : (
+              libraryPaths.map((path, idx) => (
+                <div key={idx} className="library-path-item">
+                  <span className="library-path-text">{path}</span>
+                  <button className="library-path-remove" onClick={() => handleRemoveFolder(path)} tabIndex={0}>✕</button>
+                </div>
+              ))
+            )}
+          </div>
+
+          <div className="library-actions">
+            <button className="btn-secondary" onClick={handleAddFolder} tabIndex={0}>
+              + Add Folder
+            </button>
+            <div style={{ display: 'flex', gap: '8px', marginLeft: 'auto' }}>
+              {isScanning ? (
+                <button className="btn-secondary danger" onClick={cancelScan} tabIndex={0}>Cancel Scan</button>
+              ) : (
+                <button className="btn-primary" onClick={runScan} disabled={libraryPaths.length === 0} tabIndex={0}>
+                  {libraryPaths.length > 0 ? 'Start Scan / Rescan' : 'Add a folder to scan'}
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* Scanner Progress UI */}
+          {(isScanning || scanStatus) && (
+            <div className="scanner-progress-box">
+              <div className="scanner-status-text">{scanStatus || `Phase: ${progressData?.phase}`}</div>
+              {isScanning && progressData && (
+                <div className="scanner-stats">
+                  <span>Crawling: {progressData.currentLocation || '...'}</span>
+                  <div className="scanner-counters">
+                    <span>Files: {progressData.filesDiscovered}</span>
+                    <span>Games: {progressData.gamesDiscovered}</span>
+                    <span>Emulators: {progressData.emulatorsDiscovered}</span>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
         </div>
-        {scanStatus && <div className="settings-scanner-stats">{scanStatus}</div>}
       </div>
 
-      {/* Settings Category Grid */}
-      <h2 className="emulators-section-title" style={{ marginTop: 28, marginBottom: 14, fontSize: 15, fontWeight: 600, color: 'var(--text-secondary)', letterSpacing: 1, textTransform: 'uppercase' }}>
-        Categories
-      </h2>
+      <h2 className="section-label">All Categories</h2>
       <div className="settings-grid">
         {CATEGORIES.map(cat => (
-          <div
-            key={cat.id}
-            className="settings-card"
-            tabIndex={0}
-            role="button"
-            data-focusable="true"
-          >
+          <div key={cat.id} className="settings-card" tabIndex={0}>
             <div className="settings-card-icon">{cat.icon}</div>
             <div className="settings-card-text">
               <div className="settings-card-title">{cat.title}</div>

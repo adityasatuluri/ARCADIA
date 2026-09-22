@@ -25,7 +25,7 @@ contextBridge.exposeInMainWorld('arcadiaAPI', {
     resolve: (platform) => ipcRenderer.invoke('emulators:resolve', platform)
   },
   scanner: {
-    start: (targetPath) => ipcRenderer.invoke('scanner:start', targetPath),
+    start: (targetPaths) => ipcRenderer.invoke('scanner:start', targetPaths),
     cancel: () => ipcRenderer.invoke('scanner:cancel'),
     onProgress: (cb) => ipcRenderer.on('scanner:progress', (_, data) => cb(data))
   },
