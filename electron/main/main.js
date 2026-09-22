@@ -66,6 +66,9 @@ if (!gotTheLock) {
     }
   });
 
+  const { registerIpcHandlers } = require('./ipc/index.js');
+  registerIpcHandlers();
+
   // Secure IPC Foundation Example
   ipcMain.handle('system:ping', () => {
     return 'pong-from-main';
