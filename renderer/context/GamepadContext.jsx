@@ -48,9 +48,9 @@ export function GamepadProvider({ children }) {
   }, [setInputMode]);
 
   const PROMPT_DICT = {
-    xbox: { A: 'A', B: 'B', X: 'X', Y: 'Y', LB: 'LB', RB: 'RB', LT: 'LT', RT: 'RT', UP: 'D-Pad Up' },
-    ps: { A: '✕', B: '◯', X: '◻', Y: '△', LB: 'L1', RB: 'R1', LT: 'L2', RT: 'R2', UP: 'D-Pad Up' },
-    generic: { A: 'Confirm', B: 'Cancel', X: 'Action 1', Y: 'Action 2', LB: 'Prev', RB: 'Next', LT: 'Scroll Up', RT: 'Scroll Down', UP: 'Up' }
+    xbox: { A: 'A', B: 'B', X: 'X', Y: 'Y', LB: 'LB', RB: 'RB', LT: 'LT', RT: 'RT', UP: 'D-Pad Up', START: 'Menu', SELECT: 'View' },
+    ps: { A: '✕', B: '◯', X: '◻', Y: '△', LB: 'L1', RB: 'R1', LT: 'L2', RT: 'R2', UP: 'D-Pad Up', START: 'Options', SELECT: 'Share' },
+    generic: { A: 'Confirm', B: 'Cancel', X: 'Action 1', Y: 'Action 2', LB: 'Prev', RB: 'Next', LT: 'Scroll Up', RT: 'Scroll Down', UP: 'Up', START: 'Start', SELECT: 'Select' }
   };
 
   const getPromptLabel = useCallback((logicalKey) => {
@@ -127,11 +127,11 @@ export function GamepadProvider({ children }) {
   // 2D Spatial Navigation with Modal Focus Trapping
   const moveFocus = useCallback((direction) => {
     // 1. Detect if a modal is open to trap focus inside it (Section 31: Modal Focus)
-    const activeModal = document.querySelector('.game-editor-overlay, .modal-overlay');
+    const activeModal = document.querySelector('.game-editor-overlay, .modal-overlay, .vk-overlay');
     const searchRoot = activeModal || document;
 
-    const focusable = Array.from(searchRoot.querySelectorAll('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'))
-      .filter(el => !el.disabled && el.offsetParent !== null && window.getComputedStyle(el).visibility !== 'hidden');
+    const focusable = Array.from(searchRoot.querySelectorAll('button, [href], input, select, textarea, [tabindex]'))
+      .filter(el => !el.disabled && el.tabIndex !== -1 && el.offsetParent !== null && window.getComputedStyle(el).visibility !== 'hidden');
     
     if (focusable.length === 0) return;
     const active = document.activeElement;
@@ -211,7 +211,8 @@ export function GamepadProvider({ children }) {
             case 'B': dispatchKey('Escape'); break;
             case 'LB': dispatchKey('PageUp'); break;
             case 'RB': dispatchKey('PageDown'); break;
-            case 'SELECT': dispatchKey('F9'); break;
+            case 'START': dispatchKey('F9'); break;
+            case 'SELECT': dispatchKey('F3'); break;
           }
         }
       }
@@ -240,6 +241,7 @@ export function GamepadProvider({ children }) {
       handleInput('LB', gp.buttons[4]?.pressed);
       handleInput('RB', gp.buttons[5]?.pressed);
       handleInput('SELECT', gp.buttons[8]?.pressed);
+      handleInput('START', gp.buttons[9]?.pressed);
 
       // Triggers
       const lt = gp.buttons[6]?.value || 0;

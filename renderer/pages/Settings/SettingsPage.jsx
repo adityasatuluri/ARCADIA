@@ -47,6 +47,7 @@ export default function SettingsPage() {
     theme: 'dark',
     ui_scale: '100%',
     accent_color: 'blue',
+    fullscreen: true,
     minimize_on_launch: true,
     restore_on_exit: true,
     auto_download_covers: true,
@@ -91,6 +92,13 @@ export default function SettingsPage() {
     if (!window.arcadiaAPI) return;
     await window.arcadiaAPI.settings.set(key, value);
     setSettings(prev => ({ ...prev, [key]: value }));
+    
+    if (key === 'ui_scale') {
+      const zoomMap = { '90%': '0.9', '100%': '1', '110%': '1.1' };
+      document.body.style.zoom = zoomMap[value] || '1';
+    } else if (key === 'accent_color') {
+      document.documentElement.setAttribute('data-accent', value);
+    }
   };
 
   const savePaths = async (newPaths) => {
@@ -145,21 +153,51 @@ export default function SettingsPage() {
               <span>Theme Mode</span>
               <button className="btn-secondary" onClick={toggleTheme}>{theme === 'dark' ? 'Dark Mode' : 'Light Mode'}</button>
             </label>
-            <label className="settings-row">
+            <label className="settings-row" tabIndex={0} onKeyDown={e => {
+                if(e.key === 'Enter') {
+                  const opts = ['90%', '100%', '110%'];
+                  const next = opts[(opts.indexOf(settings.ui_scale) + 1) % opts.length];
+                  handleSetSetting('ui_scale', next);
+                }
+              }}>
               <span>UI Scale</span>
-              <select value={settings.ui_scale} onChange={e => handleSetSetting('ui_scale', e.target.value)} tabIndex={0}>
+              <select value={settings.ui_scale} onChange={e => handleSetSetting('ui_scale', e.target.value)} tabIndex={-1}>
                 <option value="90%">90%</option>
                 <option value="100%">100%</option>
                 <option value="110%">110%</option>
               </select>
             </label>
-            <label className="settings-row">
+            <label className="settings-row" tabIndex={0} onKeyDown={e => {
+                if (e.key === 'Enter') {
+                  const opts = ['blue', 'purple', 'red'];
+                  const next = opts[(opts.indexOf(settings.accent_color) + 1) % opts.length];
+                  handleSetSetting('accent_color', next);
+                }
+              }}>
               <span>Accent Color</span>
-              <select value={settings.accent_color} onChange={e => handleSetSetting('accent_color', e.target.value)} tabIndex={0}>
+              <select value={settings.accent_color} onChange={e => handleSetSetting('accent_color', e.target.value)} tabIndex={-1}>
                 <option value="blue">Blue</option>
                 <option value="purple">Purple</option>
                 <option value="red">Red</option>
               </select>
+            </label>
+            <label className="settings-row" tabIndex={0} onKeyDown={e => { 
+                if(e.key === 'Enter') {
+                  const val = !settings.fullscreen;
+                  handleSetSetting('fullscreen', val);
+                  if (window.arcadiaAPI?.system?.setFullscreen) {
+                    window.arcadiaAPI.system.setFullscreen(val);
+                  }
+                } 
+              }}>
+              <span>Fullscreen Mode</span>
+              <input type="checkbox" checked={settings.fullscreen} onChange={e => {
+                const val = e.target.checked;
+                handleSetSetting('fullscreen', val);
+                if (window.arcadiaAPI?.system?.setFullscreen) {
+                  window.arcadiaAPI.system.setFullscreen(val);
+                }
+              }} tabIndex={-1} />
             </label>
           </div>
         </div>
@@ -184,21 +222,39 @@ export default function SettingsPage() {
               {gamepads.length > 0 && <button className="btn-secondary" onClick={() => vibrate(500, 1, 1)}>Test Rumble</button>}
             </div>
             
-            <label className="settings-row">
+            <label className="settings-row" tabIndex={0} onKeyDown={e => {
+                if (e.key === 'Enter') {
+                  let next = analogSensitivity + 0.05;
+                  if (next > 1.0) next = 0.0;
+                  updateConfig('analogSensitivity', parseFloat(next.toFixed(2)));
+                }
+              }}>
               <span>Analog Deadzone ({(analogSensitivity*100).toFixed(0)}%)</span>
-              <input type="range" min="0" max="1" step="0.05" value={analogSensitivity} onChange={e => updateConfig('analogSensitivity', parseFloat(e.target.value))} tabIndex={0} />
+              <input type="range" min="0" max="1" step="0.05" value={analogSensitivity} onChange={e => updateConfig('analogSensitivity', parseFloat(e.target.value))} tabIndex={-1} />
             </label>
-            <label className="settings-row">
+            <label className="settings-row" tabIndex={0} onKeyDown={e => {
+                if (e.key === 'Enter') {
+                  let next = triggerSensitivity + 0.05;
+                  if (next > 1.0) next = 0.0;
+                  updateConfig('triggerSensitivity', parseFloat(next.toFixed(2)));
+                }
+              }}>
               <span>Trigger Sensitivity ({(triggerSensitivity*100).toFixed(0)}%)</span>
-              <input type="range" min="0" max="1" step="0.05" value={triggerSensitivity} onChange={e => updateConfig('triggerSensitivity', parseFloat(e.target.value))} tabIndex={0} />
+              <input type="range" min="0" max="1" step="0.05" value={triggerSensitivity} onChange={e => updateConfig('triggerSensitivity', parseFloat(e.target.value))} tabIndex={-1} />
             </label>
             <label className="settings-row" tabIndex={0} onKeyDown={e => { if(e.key === 'Enter') updateConfig('vibrationEnabled', !vibrationEnabled) }}>
               <span>Enable Navigation Vibration</span>
               <input type="checkbox" checked={vibrationEnabled} onChange={e => updateConfig('vibrationEnabled', e.target.checked)} tabIndex={-1} />
             </label>
-            <label className="settings-row">
+            <label className="settings-row" tabIndex={0} onKeyDown={e => {
+                if (e.key === 'Enter') {
+                  const opts = ['xbox', 'ps', 'generic'];
+                  const next = opts[(opts.indexOf(promptStyle) + 1) % opts.length];
+                  updateConfig('promptStyle', next);
+                }
+              }}>
               <span>Button Prompts Style</span>
-              <select value={promptStyle} onChange={e => updateConfig('promptStyle', e.target.value)} tabIndex={0}>
+              <select value={promptStyle} onChange={e => updateConfig('promptStyle', e.target.value)} tabIndex={-1}>
                 <option value="xbox">Xbox</option>
                 <option value="ps">PlayStation</option>
                 <option value="generic">Generic</option>
@@ -312,9 +368,15 @@ export default function SettingsPage() {
         <div className="settings-panel">
           <h2>Library Display</h2>
           <div className="settings-group">
-            <label className="settings-row">
+            <label className="settings-row" tabIndex={0} onKeyDown={e => {
+                if (e.key === 'Enter') {
+                  const opts = ['name_asc', 'recent'];
+                  const next = opts[(opts.indexOf(settings.default_sort) + 1) % opts.length];
+                  handleSetSetting('default_sort', next);
+                }
+              }}>
               <span>Default Sorting</span>
-              <select value={settings.default_sort} onChange={e => handleSetSetting('default_sort', e.target.value)} tabIndex={0}>
+              <select value={settings.default_sort} onChange={e => handleSetSetting('default_sort', e.target.value)} tabIndex={-1}>
                 <option value="name_asc">A-Z</option>
                 <option value="recent">Recently Played</option>
               </select>

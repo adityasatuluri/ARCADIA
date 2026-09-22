@@ -1,5 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useTheme } from '../../theme/ThemeContext';
+import { useGamepadConfig } from '../../context/GamepadContext';
+import VirtualKeyboard from '../VirtualKeyboard/VirtualKeyboard';
 import { Search, SlidersHorizontal } from 'lucide-react';
 import './TopBar.css';
 import arcadiaLogo from '../../assets/arcadia_top_bar_logo.png';
@@ -28,8 +30,10 @@ export default function TopBar({
   setTileSize
 }) {
   const { theme, toggleTheme } = useTheme();
+  const { inputMode } = useGamepadConfig();
   const [clock, setClock] = useState('');
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [showVK, setShowVK] = useState(false);
 
   useEffect(() => {
     function tick() {
@@ -43,7 +47,15 @@ export default function TopBar({
 
   useEffect(() => {
     function handleKeyDown(e) {
+      if (e.key === 'F3') {
+        e.preventDefault();
+        const searchInput = document.querySelector('.topbar-search-input');
+        if (searchInput) searchInput.focus();
+        return;
+      }
+      
       if (activeTab !== 'games') return;
+      
       if (e.key === 'F9') {
         setIsSettingsOpen(prev => {
           const nextState = !prev;
@@ -103,8 +115,9 @@ export default function TopBar({
         {/* Search */}
         <div className="topbar-search">
           <Search className="topbar-search-icon" size={16} />
-          <input 
-            type="text" 
+          <input
+            type="text"
+            className="topbar-search-input"
             placeholder={
               activeTab === 'emulators' ? 'Search emulators...' : 
               activeTab === 'settings' ? 'Search settings...' : 
@@ -112,6 +125,9 @@ export default function TopBar({
             }
             value={searchQuery || ''}
             onChange={e => setSearchQuery && setSearchQuery(e.target.value)}
+            onClick={() => {
+              if (inputMode === 'gamepad') setShowVK(true);
+            }}
             tabIndex={0}
           />
         </div>
@@ -172,6 +188,19 @@ export default function TopBar({
         {/* Clock */}
         <span className="topbar-clock">{clock}</span>
       </div>
+
+      <VirtualKeyboard
+        isOpen={showVK}
+        value={searchQuery || ''}
+        onChange={val => setSearchQuery && setSearchQuery(val)}
+        onClose={() => {
+          setShowVK(false);
+          setTimeout(() => {
+            const input = document.querySelector('.topbar-search-input');
+            if (input) input.focus();
+          }, 50);
+        }}
+      />
     </header>
   );
 }

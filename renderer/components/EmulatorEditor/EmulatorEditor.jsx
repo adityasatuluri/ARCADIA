@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { X } from 'lucide-react';
 import '../GameEditor/GameEditor.css'; // Reuse form styles
 import { useModalFocus } from '../../hooks/useModalFocus';
@@ -87,55 +88,49 @@ export default function EmulatorEditor({ emulator, onClose, onSave }) {
     }
   };
 
-  return (
+  return createPortal(
     <div className="game-editor-overlay" ref={modalRef}>
       <div className="game-editor-modal">
         <div className="game-editor-header">
-          <h2>{emulator ? 'Edit Emulator' : 'Add Emulator'}</h2>
+          <h2>{emulator ? 'Edit Emulator' : 'Add New Emulator'}</h2>
           <button className="game-editor-close" onClick={onClose} tabIndex={0}><X size={20} /></button>
         </div>
         
         <form className="game-editor-form" onSubmit={handleSubmit}>
           <div className="game-editor-scroll">
-            
-            <div className="form-row">
-              <div className="form-group">
-                <label>Name (Internal ID) *</label>
-                <input type="text" name="name" value={formData.name} onChange={handleChange} tabIndex={0}/>
-                {errors.name && <span className="error-text">{errors.name}</span>}
-              </div>
-              <div className="form-group">
-                <label>Display Name *</label>
-                <input type="text" name="display_name" value={formData.display_name} onChange={handleChange} tabIndex={0}/>
-                {errors.display_name && <span className="error-text">{errors.display_name}</span>}
-              </div>
+            <div className="form-group">
+              <label>ID (Internal System Name) *</label>
+              <input type="text" name="id" value={formData.id} onChange={handleChange} disabled={!!emulator} tabIndex={0} placeholder="e.g. ps2, snes, rpcs3"/>
             </div>
 
             <div className="form-row">
               <div className="form-group">
-                <label>Platform *</label>
-                <input type="text" name="platform" value={formData.platform} onChange={handleChange} tabIndex={0} placeholder="e.g. Xbox 360"/>
-                {errors.platform && <span className="error-text">{errors.platform}</span>}
+                <label>Name (Short) *</label>
+                <input type="text" name="name" value={formData.name} onChange={handleChange} tabIndex={0} placeholder="e.g. PCSX2"/>
               </div>
               <div className="form-group">
-                <label>Version</label>
-                <input type="text" name="version" value={formData.version} onChange={handleChange} tabIndex={0}/>
+                <label>Display Name *</label>
+                <input type="text" name="display_name" value={formData.display_name} onChange={handleChange} tabIndex={0} placeholder="e.g. PCSX2 (PlayStation 2)"/>
               </div>
+            </div>
+
+            <div className="form-group">
+              <label>Platform (Console/System) *</label>
+              <input type="text" name="platform" value={formData.platform} onChange={handleChange} tabIndex={0} placeholder="e.g. PS2, SNES, PS3"/>
             </div>
 
             <div className="form-group">
               <label>Executable Path *</label>
               <div style={{ display: 'flex', gap: '8px' }}>
-                <input style={{ flex: 1 }} type="text" name="executable" value={formData.executable} onChange={handleChange} tabIndex={0} placeholder="C:\Emulators\xemu\xemu.exe"/>
+                <input style={{ flex: 1 }} type="text" name="executable" value={formData.executable} onChange={handleChange} tabIndex={0} placeholder="Path to emulator .exe"/>
                 <button type="button" onClick={() => handleBrowse('executable', [{ name: 'Executables', extensions: ['exe', 'bat', 'cmd'] }])} className="btn-cancel" style={{ padding: '0 12px' }}>Browse</button>
               </div>
-              {errors.executable && <span className="error-text">{errors.executable}</span>}
             </div>
 
             <div className="form-row">
               <div className="form-group">
                 <label>Arguments</label>
-                <input type="text" name="arguments" value={formData.arguments} onChange={handleChange} tabIndex={0} placeholder="-dvd_path {game_path}"/>
+                <input type="text" name="arguments" value={formData.arguments} onChange={handleChange} tabIndex={0} placeholder="e.g. --fullscreen &quot;{file}&quot;"/>
               </div>
               <div className="form-group">
                 <label>Working Directory</label>
@@ -187,6 +182,7 @@ export default function EmulatorEditor({ emulator, onClose, onSave }) {
           </div>
         </form>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }

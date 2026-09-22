@@ -11,6 +11,8 @@ if (!gotTheLock) {
     mainWindow = new BrowserWindow({
       width: 1280,
       height: 720,
+      fullscreen: global.startupFullscreen !== undefined ? global.startupFullscreen : true,
+      autoHideMenuBar: true,
       title: 'Arcadia',
       backgroundColor: '#0a0e17',
       icon: path.join(__dirname, '..', '..', 'assets', 'app_icon.png'),
@@ -36,14 +38,28 @@ if (!gotTheLock) {
 
   app.whenReady().then(async () => {
     // Initialize services
+    let isFullscreen = true; // Default
     try {
       const userDataPath = app.getPath('userData');
       const dbService = require('./database/index.js');
       await dbService.init(userDataPath);
+      
+      const fsSetting = await dbService.getSetting('fullscreen');
+      if (fsSetting !== undefined && fsSetting !== null) {
+        if (typeof fsSetting === 'string') {
+          isFullscreen = fsSetting === 'true';
+        } else {
+          isFullscreen = !!fsSetting;
+        }
+      }
+      
       console.log('[Main] Services initialized.');
     } catch (err) {
       console.error('[Main] Init failed:', err);
     }
+    
+    // Store in global or pass to createWindow
+    global.startupFullscreen = isFullscreen;
 
     // Register IPC
     const { registerIpcHandlers } = require('./ipc/index.js');

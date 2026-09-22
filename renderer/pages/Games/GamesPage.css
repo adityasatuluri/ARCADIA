@@ -146,6 +146,14 @@
   transition: all 0.4s cubic-bezier(0.2, 0.8, 0.2, 1);
 }
 
+.game-tile:hover .game-tile-cover-wrap,
+.game-tile:focus .game-tile-cover-wrap,
+.game-tile:focus-within .game-tile-cover-wrap,
+.game-tile.focused .game-tile-cover-wrap {
+  border: 2px solid #fff;
+  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.15), 0 16px 32px rgba(0,0,0,0.8);
+}
+
 .game-tile-cover-wrap img {
   width: 100%;
   height: 100%;
@@ -349,7 +357,10 @@
   border: 2px dashed rgba(255, 255, 255, 0.2);
   transition: all 0.4s cubic-bezier(0.2, 0.8, 0.2, 1);
 }
-.tile-library:hover .library-cover, .tile-library.focused .library-cover {
+.tile-library:hover .library-cover, 
+.tile-library:focus .library-cover, 
+.tile-library:focus-within .library-cover, 
+.tile-library.focused .library-cover {
   border-color: #3ab5f5; /* Neon blue matching the image */
   border-style: solid;
   background: rgba(58, 181, 245, 0.05);
@@ -379,7 +390,10 @@
   width: 100%;
   opacity: 0.8;
 }
-.game-tile:hover .grid-tile-title, .game-tile.focused .grid-tile-title {
+.game-tile:hover .grid-tile-title, 
+.game-tile:focus .grid-tile-title, 
+.game-tile:focus-within .grid-tile-title, 
+.game-tile.focused .grid-tile-title {
   opacity: 1;
   color: #fff;
 }

@@ -369,9 +369,11 @@ export default function GamesPage({
                         return (
                           <div
                             key={game.id}
-                            className="game-tile size-sm" /* Fixed size for grid */
+                            className={`game-tile size-sm ${isFocused ? 'focused' : ''}`}
                             tabIndex={0}
                             onClick={() => setSelectedGameDetails(game)}
+                            onFocus={(e) => handleFocus(game, e)}
+                            onMouseEnter={() => setFocusedGame(game)}
                             onKeyDown={(e) => {
                               if ((e.key === 'Enter' || e.key === ' ') && e.target === e.currentTarget) { 
                                 e.preventDefault(); setSelectedGameDetails(game); 

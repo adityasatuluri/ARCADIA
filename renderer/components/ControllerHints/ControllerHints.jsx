@@ -25,6 +25,14 @@ export default function ControllerHints() {
           <span className="hint-key">{getPromptLabel('LT')} / {getPromptLabel('RT')}</span>
           <span className="hint-label">Scroll</span>
         </div>
+        <div className="hint-item">
+          <span className="hint-key">{getPromptLabel('SELECT')}</span>
+          <span className="hint-label">Search</span>
+        </div>
+        <div className="hint-item">
+          <span className="hint-key">{getPromptLabel('START')}</span>
+          <span className="hint-label">View</span>
+        </div>
       </div>
     </div>
   );

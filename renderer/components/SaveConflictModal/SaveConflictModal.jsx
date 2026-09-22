@@ -1,4 +1,5 @@
 import React, { useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { useModalFocus } from '../../hooks/useModalFocus';
 import './SaveConflictModal.css';
 
@@ -6,7 +7,7 @@ export default function SaveConflictModal({ title, onResolve }) {
   const modalRef = useRef(null);
   useModalFocus(modalRef);
 
-  return (
+  return createPortal(
     <div className="save-conflict-overlay">
       <div className="save-conflict-modal" ref={modalRef}>
         <h2>{title}</h2>
@@ -28,21 +29,22 @@ export default function SaveConflictModal({ title, onResolve }) {
             Replace (Overwrite)
           </button>
           <button 
-            className="btn-secondary" 
+            className="btn-cancel" 
             onClick={() => onResolve('skip')} 
             tabIndex={0}
           >
-            Skip Existing Files
+            Skip Files
           </button>
           <button 
-            className="btn-secondary" 
+            className="btn-cancel" 
             onClick={() => onResolve('cancel')} 
             tabIndex={0}
           >
-            Cancel
+            Cancel Entire Operation
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }

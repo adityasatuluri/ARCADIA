@@ -8,7 +8,8 @@ contextBridge.exposeInMainWorld('arcadiaAPI', {
     openDataFolder: () => ipcRenderer.invoke('system:open-data-folder'),
     exportConfig: (targetPath) => ipcRenderer.invoke('system:export-config', targetPath),
     importConfig: (sourcePath) => ipcRenderer.invoke('system:import-config', sourcePath),
-    resetSettings: () => ipcRenderer.invoke('system:reset-settings')
+    resetSettings: () => ipcRenderer.invoke('system:reset-settings'),
+    setFullscreen: (val) => ipcRenderer.invoke('system:set-fullscreen', val)
   },
   maintenance: {
     rebuildDatabase: () => ipcRenderer.invoke('maintenance:rebuild-database'),

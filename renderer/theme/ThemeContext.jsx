@@ -6,16 +6,26 @@ export function ThemeProvider({ children }) {
   const [theme, setThemeState] = useState('dark');
 
   useEffect(() => {
-    // Load persisted theme from backend
+    // Load persisted theme and global appearance from backend
     async function loadTheme() {
       if (window.arcadiaAPI && window.arcadiaAPI.settings) {
         try {
           const all = await window.arcadiaAPI.settings.getAll();
-          if (all.success && all.data && all.data.theme) {
-            setThemeState(all.data.theme);
-            document.documentElement.setAttribute('data-theme', all.data.theme);
+          if (all.success && all.data) {
+            const t = all.data.theme || 'dark';
+            setThemeState(t);
+            document.documentElement.setAttribute('data-theme', t);
+            
+            const scale = all.data.ui_scale || '100%';
+            const zoomMap = { '90%': '0.9', '100%': '1', '110%': '1.1' };
+            document.body.style.zoom = zoomMap[scale] || '1';
+            
+            const accent = all.data.accent_color || 'blue';
+            document.documentElement.setAttribute('data-accent', accent);
           } else {
             document.documentElement.setAttribute('data-theme', 'dark');
+            document.body.style.zoom = '1';
+            document.documentElement.setAttribute('data-accent', 'blue');
           }
         } catch {
           document.documentElement.setAttribute('data-theme', 'dark');

@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { X } from 'lucide-react';
 import './GameEditor.css';
 import { useModalFocus } from '../../hooks/useModalFocus';
@@ -124,7 +125,7 @@ export default function GameEditor({ game, onClose, onSave }) {
     }
   };
 
-  return (
+  return createPortal(
     <div className="game-editor-overlay" ref={modalRef}>
       <div className="game-editor-modal">
         <div className="game-editor-header">
@@ -282,6 +283,7 @@ export default function GameEditor({ game, onClose, onSave }) {
           </div>
         </form>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }

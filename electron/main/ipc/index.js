@@ -26,6 +26,13 @@ function registerIpcHandlers() {
 
   ipcMain.handle('system:open-data-folder', () => maintenanceService.openDataFolder());
   
+  ipcMain.handle('system:set-fullscreen', (event, isFullscreen) => {
+    const win = BrowserWindow.fromWebContents(event.sender);
+    if (win) {
+      win.setFullScreen(isFullscreen);
+    }
+  });
+  
   ipcMain.handle('system:export-config', async (_, targetPath) => maintenanceService.exportConfig(targetPath));
   ipcMain.handle('system:import-config', async (_, sourcePath) => maintenanceService.importConfig(sourcePath));
   ipcMain.handle('system:reset-settings', async () => maintenanceService.resetSettings());
