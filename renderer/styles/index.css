@@ -1,0 +1,28 @@
+/* Core Reset and Typography */
+:root {
+  --bg-color: #000000;
+  --text-color: #ffffff;
+  --text-muted: #888888;
+  --accent-color: #0070cc;
+  --focus-ring: #ffffff;
+  --surface-default: #1a1a1a;
+  --surface-hover: #2a2a2a;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  background-color: var(--bg-color);
+  color: var(--text-color);
+  font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+  overflow: hidden; /* Console style, we manage scrolling internally */
+  user-select: none; /* Prevent text selection for app-like feel */
+}
+
+h1, h2, h3, h4, h5, h6, p {
+  margin: 0;
+}

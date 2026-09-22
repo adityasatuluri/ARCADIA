@@ -1,0 +1,34 @@
+{
+  "name": "arcadia",
+  "version": "1.0.0",
+  "description": "PS5-Style Game Library & Emulator Frontend for Windows",
+  "main": "electron/main/main.js",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "start": "electron .",
+    "app": "concurrently \"vite\" \"wait-on tcp:5173 && electron .\""
+  },
+  "keywords": [
+    "gaming",
+    "launcher",
+    "emulator",
+    "electron",
+    "react"
+  ],
+  "author": "Arcadia Team",
+  "license": "MIT",
+  "dependencies": {
+    "lucide-react": "^1.47.0",
+    "react": "^19.3.0",
+    "react-dom": "^19.3.0",
+    "sql.js": "^1.14.2"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "^6.1.1",
+    "concurrently": "^10.0.5",
+    "electron": "^44.4.3",
+    "vite": "^8.3.0",
+    "wait-on": "^9.1.0"
+  }
+}
