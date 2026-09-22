@@ -8,10 +8,37 @@ function registerIpcHandlers() {
   /* ======== SYSTEM ======== */
   ipcMain.handle('system:ping', () => 'pong-from-main');
   
-  ipcMain.handle('system:show-open-dialog', async (event, options) => {
-    const { canceled, filePaths } = await dialog.showOpenDialog(options);
+  ipcMain.handle('system:show-open-dialog', async (event, options = {}) => {
+    const win = BrowserWindow.fromWebContents(event.sender);
+    const { canceled, filePaths } = await dialog.showOpenDialog(win, options);
     if (canceled || filePaths.length === 0) return null;
     return filePaths[0];
+  });
+
+  /* ======== SETTINGS ======== */
+  ipcMain.handle('settings:get-all', async () => {
+    try {
+      return { success: true, data: dbService.getAllSettings() };
+    } catch (e) {
+      return { success: false, error: e.message };
+    }
+  });
+
+  ipcMain.handle('settings:get', async (_, key) => {
+    try {
+      return { success: true, data: dbService.getSetting(key) };
+    } catch (e) {
+      return { success: false, error: e.message };
+    }
+  });
+
+  ipcMain.handle('settings:set', async (_, key, value) => {
+    try {
+      dbService.setSetting(key, value);
+      return { success: true };
+    } catch (e) {
+      return { success: false, error: e.message };
+    }
   });
 
   /* ======== LAUNCHER ======== */
