@@ -1,102 +1,67 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
+import { ThemeProvider } from './theme/ThemeContext';
+import TopBar from './components/TopBar/TopBar';
+import GamesPage from './pages/Games/GamesPage';
+import EmulatorsPage from './pages/Emulators/EmulatorsPage';
+import SettingsPage from './pages/Settings/SettingsPage';
 
-function App() {
-  const [status, setStatus] = useState('Checking database...');
-  const [emulators, setEmulators] = useState([]);
-  const [games, setGames] = useState([]);
-  const [scanPath, setScanPath] = useState('Z:\\');
-  const [scanStats, setScanStats] = useState(null);
+function AppShell() {
+  const [activeTab, setActiveTab] = useState('games');
 
+  // Global keyboard navigation: Tab switching and controller foundation
   useEffect(() => {
-    async function testDB() {
-      if (!window.arcadiaAPI) {
-        setStatus('arcadiaAPI not available.');
-        return;
-      }
+    function handleGlobalKeys(e) {
+      // F5 / Ctrl+R: prevent reload in production feel
+      // LB/RB simulation via PageUp/PageDown
+      const tabs = ['games', 'emulators', 'settings'];
+      const idx = tabs.indexOf(activeTab);
 
-      // Hook up scanner progress
-      if (window.arcadiaAPI.scanner) {
-        window.arcadiaAPI.scanner.onProgress((data) => setScanStats(data));
-      }
-
-      try {
-        setStatus('Fetching initial data...');
-        // Emulators test
-        const emuRes = await window.arcadiaAPI.emulators.getAll();
-        if (emuRes.success) setEmulators(emuRes.data);
-        
-        // Games test
-        const gamesRes = await window.arcadiaAPI.games.getAll();
-        if (gamesRes.success) setGames(gamesRes.data);
-
-        setStatus(`Database ready.`);
-      } catch (err) {
-        setStatus(`Database Error: ${err.message}`);
+      if (e.key === 'PageDown' || (e.key === 'ArrowRight' && e.altKey)) {
+        // RB → next tab
+        e.preventDefault();
+        setActiveTab(tabs[(idx + 1) % tabs.length]);
+      } else if (e.key === 'PageUp' || (e.key === 'ArrowLeft' && e.altKey)) {
+        // LB → prev tab
+        e.preventDefault();
+        setActiveTab(tabs[(idx - 1 + tabs.length) % tabs.length]);
       }
     }
-    testDB();
+    window.addEventListener('keydown', handleGlobalKeys);
+    return () => window.removeEventListener('keydown', handleGlobalKeys);
+  }, [activeTab]);
+
+  const handleTabChange = useCallback((tabId) => {
+    setActiveTab(tabId);
   }, []);
 
-  const runScan = async () => {
-    if (!window.arcadiaAPI) return;
-    setStatus(`Scanning ${scanPath}...`);
-    const res = await window.arcadiaAPI.scanner.start(scanPath);
-    if (res.success) {
-      setStatus(`Scan complete.`);
-      // Refresh
-      const emuRes = await window.arcadiaAPI.emulators.getAll();
-      if (emuRes.success) setEmulators(emuRes.data);
-      const gamesRes = await window.arcadiaAPI.games.getAll();
-      if (gamesRes.success) setGames(gamesRes.data);
-    } else {
-      setStatus(`Scan failed: ${res.error}`);
-    }
-  };
+  let PageComponent;
+  switch (activeTab) {
+    case 'emulators':
+      PageComponent = <EmulatorsPage />;
+      break;
+    case 'settings':
+      PageComponent = <SettingsPage />;
+      break;
+    case 'games':
+    default:
+      PageComponent = <GamesPage />;
+      break;
+  }
 
   return (
-    <div style={{ padding: '40px' }}>
-      <h1 style={{ fontSize: '2.5rem', letterSpacing: '2px', textAlign: 'center' }}>ARCADIA</h1>
-      <p style={{ textAlign: 'center', color: '#888' }}>Scanner Service & Auto-Detection Integration</p>
-      
-      <div style={{ marginTop: '30px', padding: '15px', backgroundColor: '#1a1a1a', borderRadius: '8px' }}>
-        <h3>Status: {status}</h3>
-        {scanStats && (
-          <div style={{ marginTop: '10px', fontSize: '0.9rem', color: '#00cc66' }}>
-            <p><strong>Crawling:</strong> {scanStats.currentLocation}</p>
-            <p><strong>Files:</strong> {scanStats.filesDiscovered} | <strong>Games:</strong> {scanStats.gamesDiscovered} | <strong>Emulators:</strong> {scanStats.emulatorsDiscovered}</p>
-          </div>
-        )}
-      </div>
-
-      <div style={{ marginTop: '20px', padding: '15px', backgroundColor: '#1a1a1a', borderRadius: '8px', display: 'flex', gap: '10px' }}>
-        <input 
-          type="text" 
-          value={scanPath} 
-          onChange={e => setScanPath(e.target.value)} 
-          style={{ padding: '10px', flex: 1, backgroundColor: '#333', color: 'white', border: 'none', borderRadius: '4px' }}
-        />
-        <button onClick={runScan} style={{ padding: '10px 20px', cursor: 'pointer', backgroundColor: '#0070cc', color: 'white', border: 'none', borderRadius: '4px' }}>
-          Start Scan
-        </button>
-      </div>
-
-      <div style={{ display: 'flex', gap: '20px', marginTop: '20px' }}>
-        <div style={{ flex: 1, padding: '15px', backgroundColor: '#1a1a1a', borderRadius: '8px' }}>
-          <h3>Emulators ({emulators.length})</h3>
-          <ul style={{ fontSize: '0.9rem', color: '#ccc' }}>
-            {emulators.map(e => <li key={e.id}>{e.display_name} ({e.platform}) - {e.executable}</li>)}
-          </ul>
-        </div>
-        
-        <div style={{ flex: 1, padding: '15px', backgroundColor: '#1a1a1a', borderRadius: '8px' }}>
-          <h3>Games ({games.length})</h3>
-          <ul style={{ fontSize: '0.9rem', color: '#ccc' }}>
-            {games.map(g => <li key={g.id}>{g.display_name} [{g.platform}] - {g.game_path}</li>)}
-          </ul>
-        </div>
-      </div>
+    <div className="app-shell">
+      <TopBar activeTab={activeTab} onTabChange={handleTabChange} />
+      <main className="app-content hide-scrollbar">
+        {PageComponent}
+      </main>
     </div>
   );
 }
 
-export default App;
+export default function App() {
+  return (
+    <ThemeProvider>
+      <AppShell />
+    </ThemeProvider>
+  );
+}

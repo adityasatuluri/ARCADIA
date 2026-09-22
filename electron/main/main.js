@@ -1,7 +1,6 @@
 const { app, BrowserWindow, ipcMain } = require('electron');
 const path = require('path');
 
-// Prevent multiple instances
 const gotTheLock = app.requestSingleInstanceLock();
 if (!gotTheLock) {
   app.quit();
@@ -13,64 +12,50 @@ if (!gotTheLock) {
       width: 1280,
       height: 720,
       title: 'Arcadia',
-      backgroundColor: '#000000', // Console-style dark background
+      backgroundColor: '#0a0e17',
       webPreferences: {
         nodeIntegration: false,
         contextIsolation: true,
         preload: path.join(__dirname, '..', 'preload', 'preload.js'),
-        sandbox: false // Sandbox false may be required if preload needs specific IPC or electron features, though contextIsolation is true
+        sandbox: false,
+        webSecurity: false // Allow file:// protocol for local artwork images
       }
     });
 
-    // In development mode, Vite runs on port 5173
     const isDev = process.env.NODE_ENV !== 'production' && !app.isPackaged;
-    
+
     if (isDev) {
       mainWindow.loadURL('http://localhost:5173');
-      // mainWindow.webContents.openDevTools();
     } else {
       mainWindow.loadFile(path.join(__dirname, '..', '..', 'dist', 'index.html'));
     }
 
-    mainWindow.on('closed', () => {
-      mainWindow = null;
-    });
+    mainWindow.on('closed', () => { mainWindow = null; });
   }
 
   app.whenReady().then(async () => {
-    // Initialize backend services
+    // Initialize services
     try {
       const userDataPath = app.getPath('userData');
       const dbService = require('./database/index.js');
-      const configService = require('./services/config.js');
-      
       await dbService.init(userDataPath);
-      configService.init(userDataPath);
-      console.log('[Main] Services initialized successfully.');
+      console.log('[Main] Services initialized.');
     } catch (err) {
-      console.error('[Main] Failed to initialize services:', err);
+      console.error('[Main] Init failed:', err);
     }
+
+    // Register IPC
+    const { registerIpcHandlers } = require('./ipc/index.js');
+    registerIpcHandlers();
 
     createWindow();
 
     app.on('activate', () => {
-      if (BrowserWindow.getAllWindows().length === 0) {
-        createWindow();
-      }
+      if (BrowserWindow.getAllWindows().length === 0) createWindow();
     });
   });
 
   app.on('window-all-closed', () => {
-    if (process.platform !== 'darwin') {
-      app.quit();
-    }
-  });
-
-  const { registerIpcHandlers } = require('./ipc/index.js');
-  registerIpcHandlers();
-
-  // Secure IPC Foundation Example
-  ipcMain.handle('system:ping', () => {
-    return 'pong-from-main';
+    if (process.platform !== 'darwin') app.quit();
   });
 }

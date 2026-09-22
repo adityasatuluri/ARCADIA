@@ -1,104 +1,98 @@
 const { ipcMain } = require('electron');
 const dbService = require('../database/index.js');
-const configService = require('../services/config.js');
 const scannerService = require('../scanner/index.js');
 
 function registerIpcHandlers() {
-  // Scanner
-  ipcMain.handle('scanner:start', async (event, targetPath) => {
+
+  /* ======== SCANNER ======== */
+  ipcMain.handle('scanner:start', async (_, targetPath) => {
     return await scannerService.scanDirectory(targetPath);
   });
-
   ipcMain.handle('scanner:cancel', () => {
     scannerService.cancelScan();
     return { success: true };
   });
 
-  // Games
+  /* ======== GAMES ======== */
   ipcMain.handle('games:get-all', () => {
-    try {
-      return { success: true, data: dbService.getAllGames() };
-    } catch (err) {
-      return { success: false, error: err.message };
-    }
+    try { return { success: true, data: dbService.getAllGames() }; }
+    catch (e) { return { success: false, error: e.message }; }
   });
 
-  ipcMain.handle('games:upsert', (event, game) => {
+  ipcMain.handle('games:get', (_, id) => {
     try {
-      if (!game || !game.id) throw new Error("Invalid game record: missing id");
-      
-      // Update Database
-      const updated = dbService.upsertGame(game);
-      
-      // Update JSON Config
-      configService.saveGameConfigFile(updated);
-
-      return { success: true, data: updated };
-    } catch (err) {
-      console.error(err);
-      return { success: false, error: err.message };
-    }
+      const g = dbService.getGameById(id);
+      return g ? { success: true, data: g } : { success: false, error: 'Not found' };
+    } catch (e) { return { success: false, error: e.message }; }
   });
 
-  ipcMain.handle('games:toggle-favorite', (event, id) => {
+  ipcMain.handle('games:upsert', (_, game) => {
     try {
-      const updated = dbService.toggleFavorite(id);
-      if (updated) {
-        configService.saveGameConfigFile(updated);
-        
-        // Update favorites table
-        if (updated.favorite) {
-           dbService.db.run("INSERT OR REPLACE INTO favorites (game_id, added_at) VALUES (?, ?)", [id, new Date().toISOString()]);
-        } else {
-           dbService.db.run("DELETE FROM favorites WHERE game_id = ?", [id]);
-        }
-        dbService.persist();
-      }
-      return { success: true, data: updated };
-    } catch (err) {
-      return { success: false, error: err.message };
-    }
+      if (!game || !game.id) throw new Error('Invalid game: missing id');
+      return { success: true, data: dbService.upsertGame(game) };
+    } catch (e) { console.error(e); return { success: false, error: e.message }; }
   });
 
-  // Emulators
+  ipcMain.handle('games:toggle-favorite', (_, id) => {
+    try {
+      const g = dbService.toggleFavorite(id);
+      return { success: true, data: g };
+    } catch (e) { return { success: false, error: e.message }; }
+  });
+
+  ipcMain.handle('games:remove', (_, id) => {
+    try { return { success: true, data: dbService.removeGame(id) }; }
+    catch (e) { return { success: false, error: e.message }; }
+  });
+
+  ipcMain.handle('games:record-launch', (_, id) => {
+    try { dbService.recordGameLaunch(id); return { success: true }; }
+    catch (e) { return { success: false, error: e.message }; }
+  });
+
+  /* ======== EMULATORS ======== */
   ipcMain.handle('emulators:get-all', () => {
-    try {
-      return { success: true, data: dbService.getAllEmulators() };
-    } catch (err) {
-      return { success: false, error: err.message };
-    }
+    try { return { success: true, data: dbService.getAllEmulators() }; }
+    catch (e) { return { success: false, error: e.message }; }
   });
 
-  ipcMain.handle('emulators:upsert', (event, emulator) => {
+  ipcMain.handle('emulators:upsert', (_, emu) => {
     try {
-      if (!emulator || !emulator.name) throw new Error("Invalid emulator record: missing name");
-      
-      const updated = dbService.upsertEmulator(emulator);
-      configService.saveEmulatorConfigFile(updated);
-      
-      return { success: true, data: updated };
-    } catch (err) {
-      return { success: false, error: err.message };
-    }
+      if (!emu || !emu.name) throw new Error('Invalid emulator: missing name');
+      return { success: true, data: dbService.upsertEmulator(emu) };
+    } catch (e) { return { success: false, error: e.message }; }
   });
 
-  // Settings
+  ipcMain.handle('emulators:remove', (_, id) => {
+    try { return { success: true, data: dbService.removeEmulator(id) }; }
+    catch (e) { return { success: false, error: e.message }; }
+  });
+
+  ipcMain.handle('emulators:get-games', (_, emuId) => {
+    try { return { success: true, data: dbService.getGamesForEmulator(emuId) }; }
+    catch (e) { return { success: false, error: e.message }; }
+  });
+
+  ipcMain.handle('emulators:resolve', (_, platform) => {
+    try {
+      const emu = dbService.getDefaultEmulatorForPlatform(platform);
+      return emu ? { success: true, data: emu } : { success: false, error: 'No emulator for platform: ' + platform };
+    } catch (e) { return { success: false, error: e.message }; }
+  });
+
+  /* ======== SETTINGS ======== */
   ipcMain.handle('settings:get-all', () => {
-    try {
-      return { success: true, data: dbService.getAllSettings() };
-    } catch (err) {
-      return { success: false, error: err.message };
-    }
+    try { return { success: true, data: dbService.getAllSettings() }; }
+    catch (e) { return { success: false, error: e.message }; }
   });
 
-  ipcMain.handle('settings:set', (event, key, value) => {
-    try {
-      dbService.setSetting(key, value);
-      return { success: true };
-    } catch (err) {
-      return { success: false, error: err.message };
-    }
+  ipcMain.handle('settings:set', (_, key, value) => {
+    try { dbService.setSetting(key, value); return { success: true }; }
+    catch (e) { return { success: false, error: e.message }; }
   });
+
+  /* ======== SYSTEM ======== */
+  ipcMain.handle('system:ping', () => 'pong-from-main');
 }
 
 module.exports = { registerIpcHandlers };

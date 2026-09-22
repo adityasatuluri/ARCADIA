@@ -1,28 +1,108 @@
-/* Core Reset and Typography */
-:root {
-  --bg-color: #000000;
-  --text-color: #ffffff;
-  --text-muted: #888888;
-  --accent-color: #0070cc;
-  --focus-ring: #ffffff;
-  --surface-default: #1a1a1a;
-  --surface-hover: #2a2a2a;
-}
+/* ============================================================
+   ARCADIA — Global Styles & Reset
+   ============================================================ */
+@import url('../theme/theme.css');
 
 * {
   box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html, body, #root {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
 }
 
 body {
-  margin: 0;
-  padding: 0;
-  background-color: var(--bg-color);
-  color: var(--text-color);
-  font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
-  overflow: hidden; /* Console style, we manage scrolling internally */
-  user-select: none; /* Prevent text selection for app-like feel */
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+  font-family: 'Segoe UI', system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  user-select: none;
+  cursor: default;
 }
 
-h1, h2, h3, h4, h5, h6, p {
-  margin: 0;
+/* Scrollbar styling */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--bg-surface-hover);
+  border-radius: var(--radius-full);
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--text-muted);
+}
+
+/* --- Application Shell Layout --- */
+.app-shell {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100vh;
+  overflow: hidden;
+}
+
+.app-content {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding-top: var(--topbar-height);
+  scroll-behavior: smooth;
+}
+
+/* --- Focus Management --- */
+[tabindex]:focus,
+button:focus,
+a:focus,
+input:focus {
+  outline: none;
+}
+
+.focusable:focus-visible,
+[data-focusable="true"]:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-glow);
+  border-color: var(--accent-primary) !important;
+  transform: scale(1.03);
+  z-index: 10;
+}
+
+/* --- Shared component utilities --- */
+.glass-surface {
+  background: var(--bg-glass);
+  backdrop-filter: blur(var(--blur-md));
+  -webkit-backdrop-filter: blur(var(--blur-md));
+  border: 1px solid var(--border-subtle);
+}
+
+.glass-surface-heavy {
+  background: var(--bg-glass-heavy);
+  backdrop-filter: blur(var(--blur-lg));
+  -webkit-backdrop-filter: blur(var(--blur-lg));
+  border: 1px solid var(--border-subtle);
+}
+
+/* Transitions */
+.transition-all {
+  transition: all var(--transition-normal);
+}
+.transition-fast {
+  transition: all var(--transition-fast);
+}
+
+/* Hide scrollbar but keep scrolling */
+.hide-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.hide-scrollbar::-webkit-scrollbar {
+  display: none;
 }

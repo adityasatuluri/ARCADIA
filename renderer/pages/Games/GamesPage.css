@@ -1,0 +1,349 @@
+/* ============================================================
+   ARCADIA — Games Page (Console-Style)
+   ============================================================ */
+
+.games-page {
+  padding: 24px 32px 40px;
+  min-height: 100%;
+}
+
+/* ---- Section titles ---- */
+.section-label {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  margin-bottom: 14px;
+  margin-top: 28px;
+}
+.section-label:first-child { margin-top: 0; }
+
+/* ---- Horizontal scrollable tile row ---- */
+.tile-row {
+  display: flex;
+  gap: 16px;
+  overflow-x: auto;
+  overflow-y: visible;
+  padding: 4px 0 12px;
+  scroll-snap-type: x proximity;
+}
+
+/* ---- Individual Game Tile ---- */
+.game-tile {
+  flex-shrink: 0;
+  width: 140px;
+  cursor: pointer;
+  scroll-snap-align: start;
+  outline: none;
+  position: relative;
+}
+
+.game-tile-cover-wrap {
+  position: relative;
+  width: 140px;
+  height: 187px;
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  border: 2.5px solid transparent;
+  background: var(--bg-surface);
+  transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1),
+              border-color 0.2s ease,
+              box-shadow 0.25s ease;
+}
+
+.game-tile:hover .game-tile-cover-wrap,
+.game-tile:focus .game-tile-cover-wrap,
+.game-tile.focused .game-tile-cover-wrap {
+  border-color: var(--accent-primary);
+  box-shadow: 0 0 0 3px var(--accent-glow), 0 8px 24px rgba(0,0,0,0.4);
+  transform: scale(1.06) translateY(-4px);
+}
+
+.game-tile-cover-wrap img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.game-tile-placeholder {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(145deg, #1a2332, #0d1520);
+  font-size: 40px;
+  color: var(--text-muted);
+}
+
+/* Favorite badge */
+.game-tile-fav {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  font-size: 14px;
+  filter: drop-shadow(0 1px 3px rgba(0,0,0,0.7));
+  z-index: 2;
+}
+
+/* Platform badge */
+.game-tile-platform {
+  position: absolute;
+  bottom: 8px;
+  left: 8px;
+  padding: 2px 8px;
+  background: rgba(0,0,0,0.65);
+  backdrop-filter: blur(6px);
+  border-radius: var(--radius-sm);
+  font-size: 10px;
+  font-weight: 600;
+  color: #fff;
+  letter-spacing: 0.3px;
+  z-index: 2;
+}
+
+.game-tile-name {
+  margin-top: 8px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  text-align: center;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  transition: color 0.2s ease;
+}
+
+.game-tile:hover .game-tile-name,
+.game-tile:focus .game-tile-name,
+.game-tile.focused .game-tile-name {
+  color: var(--text-accent);
+}
+
+/* ---- Add Game Tile ---- */
+.tile-add {
+  flex-shrink: 0;
+  width: 140px;
+  height: 187px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border: 2px dashed var(--border-default);
+  border-radius: var(--radius-md);
+  color: var(--text-muted);
+  background: transparent;
+  cursor: pointer;
+  font-size: 13px;
+  font-family: inherit;
+  transition: all 0.2s ease;
+}
+.tile-add:hover, .tile-add:focus {
+  border-color: var(--accent-primary);
+  color: var(--accent-primary);
+  background: var(--bg-surface);
+}
+.tile-add-icon { font-size: 32px; font-weight: 300; }
+
+/* ---- Focus Details Panel ---- */
+.focus-panel {
+  margin-top: 28px;
+  padding: 28px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  display: flex;
+  gap: 28px;
+  animation: panelIn 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+@keyframes panelIn {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* Cover in panel */
+.focus-cover {
+  width: 150px;
+  height: 200px;
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  flex-shrink: 0;
+  background: var(--bg-surface-hover);
+  box-shadow: var(--shadow-md);
+}
+.focus-cover img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* Info section */
+.focus-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.focus-title {
+  font-size: 26px;
+  font-weight: 700;
+  color: var(--text-accent);
+  line-height: 1.2;
+}
+
+.focus-subtitle {
+  font-size: 13px;
+  color: var(--text-muted);
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+.focus-subtitle span + span::before {
+  content: '·';
+  margin-right: 6px;
+  color: var(--text-muted);
+}
+
+.focus-desc {
+  font-size: 13px;
+  color: var(--text-secondary);
+  line-height: 1.55;
+  margin-top: 2px;
+  max-height: 58px;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+}
+
+/* Tags */
+.focus-tags {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-top: 4px;
+}
+.focus-tag {
+  padding: 3px 10px;
+  background: var(--bg-surface-hover);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-full);
+  font-size: 11px;
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+
+/* Meta grid */
+.focus-meta {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 6px 20px;
+  margin-top: 6px;
+}
+.focus-meta-item {
+  font-size: 12px;
+}
+.focus-meta-label {
+  color: var(--text-muted);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+.focus-meta-value {
+  color: var(--text-primary);
+  font-weight: 500;
+}
+
+/* Action buttons */
+.focus-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: auto;
+  padding-top: 8px;
+}
+
+.btn-play {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 30px;
+  background: var(--accent-primary);
+  color: #fff;
+  font-size: 14px;
+  font-weight: 600;
+  border: none;
+  border-radius: var(--radius-full);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-family: inherit;
+}
+.btn-play:hover { background: var(--accent-hover); transform: scale(1.03); }
+.btn-play:focus-visible { box-shadow: var(--focus-glow); }
+
+.btn-action {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 18px;
+  background: var(--bg-surface-hover);
+  color: var(--text-primary);
+  font-size: 13px;
+  font-weight: 500;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-full);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-family: inherit;
+}
+.btn-action:hover { background: var(--bg-surface-active); }
+.btn-action:focus-visible { box-shadow: var(--focus-glow); }
+
+.btn-action.danger:hover {
+  background: rgba(239, 68, 68, 0.15);
+  border-color: rgba(239, 68, 68, 0.3);
+  color: var(--accent-danger);
+}
+
+/* ---- Empty state ---- */
+.games-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  padding: 100px 20px;
+  text-align: center;
+}
+.games-empty-icon { font-size: 56px; opacity: 0.35; }
+.games-empty-title {
+  font-size: 22px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+.games-empty-sub {
+  font-size: 14px;
+  color: var(--text-muted);
+  max-width: 420px;
+  line-height: 1.5;
+}
+.games-empty-btn {
+  margin-top: 8px;
+  padding: 10px 24px;
+  background: var(--accent-primary);
+  color: #fff;
+  border: none;
+  border-radius: var(--radius-full);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
+  transition: all 0.2s ease;
+}
+.games-empty-btn:hover { background: var(--accent-hover); }

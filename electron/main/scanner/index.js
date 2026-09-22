@@ -2,171 +2,171 @@ const fs = require('fs');
 const path = require('path');
 const { BrowserWindow } = require('electron');
 const dbService = require('../database/index.js');
-const configService = require('../services/config.js');
 
-const SUPPORTED_EXTENSIONS = new Set([
-  '.iso', '.cso', '.bin', '.cue', '.chd', '.rom', '.nes', '.snes',
-  '.smc', '.sfc', '.gba', '.gbc', '.gb', '.nds', '.n64', '.z64',
-  '.rvz', '.gcm', '.wbfs', '.pkg', '.xbe', '.xex'
+const GAME_EXTENSIONS = new Set([
+  '.iso', '.cso', '.bin', '.cue', '.chd', '.rvz', '.gcm', '.wbfs',
+  '.nes', '.snes', '.smc', '.sfc', '.gba', '.gbc', '.gb', '.nds',
+  '.n64', '.z64', '.rom', '.pkg', '.xbe', '.xex'
 ]);
 
 class ScannerService {
   constructor() {
     this.isScanning = false;
     this.cancelRequested = false;
-    this.stats = {
-      filesDiscovered: 0,
-      gamesDiscovered: 0,
-      emulatorsDiscovered: 0,
-      currentLocation: ''
-    };
+    this.stats = { filesDiscovered: 0, gamesDiscovered: 0, emulatorsDiscovered: 0, currentLocation: '' };
   }
 
-  emitProgress() {
-    const win = BrowserWindow.getAllWindows()[0];
-    if (win) {
-      win.webContents.send('scanner:progress', { ...this.stats });
-    }
+  _emit() {
+    try {
+      const win = BrowserWindow.getAllWindows()[0];
+      if (win && !win.isDestroyed()) {
+        win.webContents.send('scanner:progress', { ...this.stats });
+      }
+    } catch {}
   }
 
   async scanDirectory(targetPath) {
     if (this.isScanning) return { success: false, error: 'Already scanning' };
-    
+
     this.isScanning = true;
     this.cancelRequested = false;
     this.stats = { filesDiscovered: 0, gamesDiscovered: 0, emulatorsDiscovered: 0, currentLocation: targetPath };
-    this.emitProgress();
+    this._emit();
 
     try {
       await this._crawl(targetPath);
-      return { success: true, stats: this.stats };
+      this._emit();
+      return { success: true, stats: { ...this.stats } };
     } catch (err) {
-      console.error('[Scanner] Scan failed:', err);
+      console.error('[Scanner] Failed:', err);
       return { success: false, error: err.message };
     } finally {
       this.isScanning = false;
-      this.emitProgress();
     }
   }
 
-  cancelScan() {
-    this.cancelRequested = true;
-  }
+  cancelScan() { this.cancelRequested = true; }
 
-  async _crawl(currentPath) {
+  async _crawl(dir) {
     if (this.cancelRequested) return;
+    this.stats.currentLocation = dir;
 
-    this.stats.currentLocation = currentPath;
-    if (this.stats.filesDiscovered % 10 === 0) this.emitProgress();
+    let entries;
+    try { entries = await fs.promises.readdir(dir, { withFileTypes: true }); }
+    catch { return; }
 
-    let entries = [];
-    try {
-      entries = await fs.promises.readdir(currentPath, { withFileTypes: true });
-    } catch (err) {
-      console.warn(`[Scanner] Cannot read directory: ${currentPath}`);
-      return;
-    }
-
-    let hasConfig = false;
+    // Check for config.json in this directory
     let configData = null;
-    let isoFiles = [];
+    let gameFiles = [];
+    let iconFile = null;
 
-    // First pass: identify config and game files in current directory
-    for (const entry of entries) {
-      if (entry.isFile()) {
-        this.stats.filesDiscovered++;
-        const ext = path.extname(entry.name).toLowerCase();
-        
-        if (entry.name.toLowerCase() === 'config.json') {
-          hasConfig = true;
-          try {
-            const raw = await fs.promises.readFile(path.join(currentPath, entry.name), 'utf-8');
-            configData = JSON.parse(raw);
-          } catch (e) {
-            console.warn(`[Scanner] Failed to parse config.json at ${currentPath}`);
-          }
-        } else if (SUPPORTED_EXTENSIONS.has(ext)) {
-          isoFiles.push(entry.name);
-        }
+    for (const e of entries) {
+      if (!e.isFile()) continue;
+      this.stats.filesDiscovered++;
+      const name = e.name.toLowerCase();
+      const ext = path.extname(name);
+
+      if (name === 'config.json') {
+        try {
+          const raw = await fs.promises.readFile(path.join(dir, e.name), 'utf-8');
+          configData = JSON.parse(raw);
+        } catch {}
+      } else if (GAME_EXTENSIONS.has(ext)) {
+        gameFiles.push(e.name);
+      } else if (name === 'icon.png' || name === 'icon.jpg' || name === 'icon.jpeg') {
+        iconFile = path.join(dir, e.name);
       }
     }
 
-    // Process Config if present
-    if (hasConfig && configData) {
-      const isEmulator = (configData.tags && configData.tags.includes('Emulator')) || configData.executable;
+    if (this.stats.filesDiscovered % 25 === 0) this._emit();
+
+    // Process config.json if found
+    if (configData) {
+      const isEmulator = configData.executable || (configData.tags && configData.tags.some(t =>
+        t.toLowerCase() === 'emulator'));
 
       if (isEmulator) {
-        // Process as Emulator
-        const emu = { ...configData };
-        if (emu.executable && !path.isAbsolute(emu.executable)) {
-          emu.executable = path.join(currentPath, emu.executable);
-        }
-        if (emu.icon && !path.isAbsolute(emu.icon)) {
-          emu.icon = path.join(currentPath, emu.icon);
-        }
-        emu.working_directory = currentPath;
-        
-        // Handle arguments format
-        if (typeof emu.arguments === 'string') {
-          emu.arguments = [emu.arguments];
-        } else if (!Array.isArray(emu.arguments)) {
-          emu.arguments = [];
-        }
-
-        dbService.upsertEmulator(emu);
-        this.stats.emulatorsDiscovered++;
+        this._registerEmulator(configData, dir, iconFile);
       } else {
-        // Process as Game
-        const game = { ...configData };
-        if (!game.id) game.id = game.name || path.basename(currentPath).toLowerCase().replace(/\s+/g, '-');
-        
-        // Resolve Game Path if missing
-        if (!game.game_path && isoFiles.length > 0) {
-          game.game_path = path.join(currentPath, isoFiles[0]); // Default to first ISO found
-        } else if (game.game_path && !path.isAbsolute(game.game_path)) {
-          game.game_path = path.join(currentPath, game.game_path);
-        }
-
-        // Resolve Artwork
-        game.artwork = game.artwork || {};
-        if (game.icon && !path.isAbsolute(game.icon)) {
-          game.artwork.icon = path.join(currentPath, game.icon);
-        }
-        
-        dbService.upsertGame(game);
-        this.stats.gamesDiscovered++;
+        this._registerGame(configData, dir, iconFile, gameFiles);
       }
-    } else if (isoFiles.length > 0) {
-      // Found game files without config.json - Auto generate basic entry
-      for (const iso of isoFiles) {
-        const gameName = path.basename(iso, path.extname(iso));
-        // Try to guess platform from parent folder name
-        const parentFolder = path.basename(path.dirname(currentPath));
-        const currentFolder = path.basename(currentPath);
-        const guessedPlatform = ['ps2', 'xbox', 'wii', 'gamecube', 'psp', 'ps1', 'ps3'].includes(parentFolder.toLowerCase()) 
-          ? parentFolder 
-          : currentFolder;
-
-        const game = {
-          id: gameName.toLowerCase().replace(/[^a-z0-9]/g, '-'),
-          name: gameName,
+    } else if (gameFiles.length > 0) {
+      // Auto-generate entries for loose game files (no config.json)
+      for (const gf of gameFiles) {
+        const gameName = path.basename(gf, path.extname(gf));
+        const parentName = path.basename(dir);
+        this._registerGame({
+          name: gameName.toLowerCase().replace(/[^a-z0-9]+/g, '-'),
           display_name: gameName,
-          type: 'emulator',
-          platform: guessedPlatform,
-          game_path: path.join(currentPath, iso)
-        };
-        dbService.upsertGame(game);
-        this.stats.gamesDiscovered++;
+          platform: parentName
+        }, dir, iconFile, [gf]);
       }
     }
 
-    // Recursively crawl subdirectories (yielding to event loop to keep UI responsive)
-    for (const entry of entries) {
-      if (entry.isDirectory()) {
-        await new Promise(r => setTimeout(r, 0)); 
-        await this._crawl(path.join(currentPath, entry.name));
+    // Recurse into subdirectories
+    for (const e of entries) {
+      if (e.isDirectory()) {
+        await new Promise(r => setTimeout(r, 0)); // yield to event loop
+        await this._crawl(path.join(dir, e.name));
       }
     }
+  }
+
+  _registerEmulator(cfg, dir, defaultIcon) {
+    const exe = cfg.executable && !path.isAbsolute(cfg.executable)
+      ? path.join(dir, cfg.executable) : (cfg.executable || '');
+    const icon = cfg.icon && !path.isAbsolute(cfg.icon)
+      ? path.join(dir, cfg.icon) : (cfg.icon || defaultIcon || '');
+
+    dbService.upsertEmulator({
+      id: cfg.name || path.basename(dir),
+      name: cfg.name || path.basename(dir),
+      display_name: cfg.display_name || cfg.name || path.basename(dir),
+      platform: cfg.platform || 'Unknown',
+      executable: exe,
+      working_directory: cfg.working_directory === '.' ? dir : (cfg.working_directory || dir),
+      arguments: cfg.arguments || '',
+      icon_path: icon,
+      description: cfg.description || '',
+      version: cfg.version || '',
+      developer: cfg.developer || '',
+      tags: cfg.tags || [],
+      is_default: true,
+      notes: cfg.notes || ''
+    });
+    this.stats.emulatorsDiscovered++;
+  }
+
+  _registerGame(cfg, dir, defaultIcon, gameFiles) {
+    const id = cfg.name || path.basename(dir).toLowerCase().replace(/[^a-z0-9]+/g, '-');
+    const icon = cfg.icon && !path.isAbsolute(cfg.icon)
+      ? path.join(dir, cfg.icon) : (cfg.icon || defaultIcon || '');
+    const gamePath = gameFiles.length > 0 ? path.join(dir, gameFiles[0]) : '';
+
+    // Try to determine emulator from the parent folder structure
+    // e.g. Z:\gaming\games\xemu\Half-Life 2 → emulator hint is 'xemu'
+    const parentFolder = path.basename(path.dirname(dir)).toLowerCase();
+
+    dbService.upsertGame({
+      id,
+      name: cfg.name || id,
+      display_name: cfg.display_name || path.basename(dir),
+      type: 'emulator',
+      platform: cfg.platform || 'Unknown',
+      game_path: gamePath,
+      icon_path: icon,
+      description: cfg.description || '',
+      year: cfg.year || null,
+      genre: cfg.genre || [],
+      developer: cfg.developer || '',
+      publisher: cfg.publisher || '',
+      tags: cfg.tags || [],
+      favorite: cfg.favorite || false,
+      notes: cfg.notes || '',
+      emulator_id: parentFolder || '',
+      source_dir: dir
+    });
+    this.stats.gamesDiscovered++;
   }
 }
 
