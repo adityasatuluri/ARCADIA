@@ -3,7 +3,7 @@
    ============================================================ */
 
 .saves-page {
-  padding: 24px 32px 40px;
+  padding: 40px 48px;
   min-height: 100%;
   display: flex;
   flex-direction: column;
@@ -13,7 +13,13 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 24px;
+  margin-bottom: 32px;
+}
+
+.saves-header-row h2 {
+  font-size: 28px;
+  font-weight: 700;
+  color: var(--text-accent);
 }
 
 .saves-list {
@@ -23,22 +29,25 @@
 }
 
 .save-card {
-  background: var(--bg-surface);
+  background: var(--bg-glass);
+  backdrop-filter: blur(var(--blur-md));
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-lg);
-  padding: 20px;
+  padding: 16px 20px;
   display: flex;
   justify-content: space-between;
   align-items: center;
   gap: 24px;
-  transition: all var(--transition-fast);
+  transition: all 0.2s cubic-bezier(0.2, 0.8, 0.2, 1);
   outline: none;
+  box-shadow: var(--shadow-sm);
 }
 
-.save-card:focus, .save-card:focus-visible {
-  border-color: var(--accent-primary);
-  background: var(--bg-surface-hover);
-  box-shadow: 0 0 0 2px var(--accent-glow);
+.save-card:focus, .save-card:focus-visible, .save-card:hover {
+  border-color: #fff;
+  background: var(--bg-surface-active);
+  transform: scale(1.01) translateY(-2px);
+  box-shadow: 0 8px 24px rgba(0,0,0,0.4);
 }
 
 .save-info {

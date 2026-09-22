@@ -1,8 +1,10 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import GameEditor from '../../components/GameEditor/GameEditor';
 import { useToast } from '../../components/Toast/ToastProvider';
+import { Gamepad2, Star, StarOff, Pencil, Trash2, Plus } from 'lucide-react';
 import './GamesPage.css';
 import defaultBg from '../../assets/background.png';
+import libraryTileImg from '../../assets/game_library_tile.jpg';
 
 export default function GamesPage({ 
   searchQuery, 
@@ -22,6 +24,25 @@ export default function GamesPage({
   const [trackAnchorId, setTrackAnchorId] = useState(null);
   const [editingGame, setEditingGame] = useState(null);
   const [isEditing, setIsEditing] = useState(false);
+  const [selectedGameDetails, setSelectedGameDetails] = useState(null);
+
+  const [showFullLibrary, setShowFullLibrary] = useState(false);
+
+  useEffect(() => {
+    const handleBack = (e) => {
+      if (e.key === 'Escape' || e.key === 'Backspace') {
+        if (selectedGameDetails) {
+          setSelectedGameDetails(null);
+          e.preventDefault();
+        } else if (showFullLibrary) {
+          setShowFullLibrary(false);
+          e.preventDefault();
+        }
+      }
+    };
+    window.addEventListener('keydown', handleBack);
+    return () => window.removeEventListener('keydown', handleBack);
+  }, [showFullLibrary, selectedGameDetails]);
 
   const loadData = useCallback(async () => {
     if (!window.arcadiaAPI) return;
@@ -75,18 +96,24 @@ export default function GamesPage({
     }
   };
 
-  const handleToggleFav = async () => {
-    if (!focusedGame || !window.arcadiaAPI) return;
-    const res = await window.arcadiaAPI.games.toggleFavorite(focusedGame.id);
-    if (res.success) loadData();
+  const handleToggleFav = async (game = focusedGame) => {
+    if (!game || !window.arcadiaAPI) return;
+    const res = await window.arcadiaAPI.games.toggleFavorite(game.id);
+    if (res.success) {
+      if (selectedGameDetails && selectedGameDetails.id === game.id) {
+        setSelectedGameDetails({...selectedGameDetails, favorite: !selectedGameDetails.favorite});
+      }
+      loadData();
+    }
   };
 
-  const handleRemove = async () => {
-    if (!focusedGame || !window.arcadiaAPI) return;
-    if (!confirm(`Remove "${focusedGame.display_name}" from library?\n\nThis only removes it from Arcadia.`)) return;
-    await window.arcadiaAPI.games.remove(focusedGame.id);
-    addToast('Game Removed', `"${focusedGame.display_name}" has been removed.`, 'info');
-    setFocusedGame(null);
+  const handleRemove = async (game = focusedGame) => {
+    if (!game || !window.arcadiaAPI) return;
+    if (!confirm(`Remove "${game.display_name}" from library?\n\nThis only removes it from Arcadia.`)) return;
+    await window.arcadiaAPI.games.remove(game.id);
+    addToast('Game Removed', `"${game.display_name}" has been removed.`, 'info');
+    if (focusedGame?.id === game.id) setFocusedGame(null);
+    if (selectedGameDetails?.id === game.id) setSelectedGameDetails(null);
     loadData();
   };
 
@@ -132,22 +159,22 @@ export default function GamesPage({
           {iconSrc ? (
             <img src={iconSrc} alt={game.display_name} draggable={false} loading="lazy" />
           ) : (
-            <div className="game-tile-placeholder">🎮</div>
+            <div className="game-tile-placeholder"><Gamepad2 size={48} opacity={0.4} /></div>
           )}
-          {game.favorite && <span className="game-tile-fav">⭐</span>}
+          {game.favorite && <span className="game-tile-fav"><Star fill="#fff" color="#fff" size={18} /></span>}
           <span className="game-tile-platform">{game.platform}</span>
         </div>
         
         {isFocused && (
           <div className="tile-action-column">
             <button className="tile-action-btn" onClick={(e) => { e.stopPropagation(); handleToggleFav(); }}>
-              {game.favorite ? '★ Unfav' : '☆ Fav'}
+              {game.favorite ? <><StarOff size={14} /> Unfav</> : <><Star size={14} /> Fav</>}
             </button>
             <button className="tile-action-btn" onClick={(e) => { e.stopPropagation(); setEditingGame(game); setIsEditing(true); }}>
-              ✏ Edit
+              <Pencil size={14} /> Edit
             </button>
             <button className="tile-action-btn danger" onClick={(e) => { e.stopPropagation(); handleRemove(); }}>
-              ✕ Remove
+              <Trash2 size={14} /> Remove
             </button>
           </div>
         )}
@@ -198,7 +225,12 @@ export default function GamesPage({
     return filtered;
   }, [games, searchQuery, hideNoArt, favoritesFirst, sortBy]);
 
-  // Grouping
+  // Home Screen computation (Max 10 games)
+  const homeGames = useMemo(() => {
+    return processedLibrary.slice(0, 10);
+  }, [processedLibrary]);
+
+  // Grouping (For Full Library View only)
   const libraryGroups = useMemo(() => {
     if (!groupPlatforms) return { 'All Games': processedLibrary };
     
@@ -217,7 +249,7 @@ export default function GamesPage({
     return (
       <div className="games-page">
         <div className="games-empty">
-          <div className="games-empty-icon">🎮</div>
+          <div className="games-empty-icon"><Gamepad2 size={64} opacity={0.5} /></div>
           <div className="games-empty-title">Your library is empty</div>
           <div className="games-empty-sub">Go to Settings to add Library Locations and scan your folders.</div>
         </div>
@@ -225,7 +257,7 @@ export default function GamesPage({
     );
   }
 
-  const displayGame = focusedGame;
+  const displayGame = selectedGameDetails || (showFullLibrary ? null : focusedGame);
   const bgSrc = displayGame?.background_path ? `file://${displayGame.background_path.replace(/\\/g, '/')}` : defaultBg;
 
   return (
@@ -238,68 +270,162 @@ export default function GamesPage({
         </div>
       )}
 
-      <div className="library-content-area">
+      <div className={`library-content-area ${showFullLibrary ? 'full-library' : ''}`}>
+        {selectedGameDetails ? (
+          <div className="game-details-view">
+            <button className="btn-secondary" style={{alignSelf: 'flex-start', marginBottom: '24px'}} onClick={() => setSelectedGameDetails(null)}>Esc / Back</button>
+            <div className="game-details-content">
+              <h1 className="game-details-title" style={{fontSize: '48px', fontWeight: '800', marginBottom: '16px'}}>{selectedGameDetails.display_name}</h1>
+              <div className="game-details-meta" style={{display: 'flex', gap: '16px', color: 'rgba(255,255,255,0.7)', fontSize: '16px', marginBottom: '32px'}}>
+                {selectedGameDetails.developer && <span>{selectedGameDetails.developer}</span>}
+                {selectedGameDetails.year && <span> • {selectedGameDetails.year}</span>}
+                {selectedGameDetails.platform && <span> • {selectedGameDetails.platform}</span>}
+              </div>
+              
+              <div className="game-details-actions" style={{display: 'flex', gap: '12px', marginBottom: '40px'}}>
+                <button className="btn-primary" autoFocus onClick={() => handleTileClick(selectedGameDetails)} style={{fontSize: '18px', padding: '12px 32px'}}>Play</button>
+                <button className="btn-secondary" onClick={() => { setEditingGame(selectedGameDetails); setIsEditing(true); }}>Edit Configuration</button>
+                <button className="btn-secondary" onClick={() => handleToggleFav(selectedGameDetails)}>
+                  {selectedGameDetails.favorite ? 'Unfavorite' : 'Favorite'}
+                </button>
+                <button className="btn-secondary danger" onClick={() => handleRemove(selectedGameDetails)}>Remove</button>
+              </div>
+              
+              <p className="game-details-desc" style={{fontSize: '16px', lineHeight: '1.6', color: 'rgba(255,255,255,0.8)', maxWidth: '800px'}}>{selectedGameDetails.description || 'No description available.'}</p>
+            </div>
+          </div>
+        ) : (
         <div className="library-grids">
-          {Object.entries(libraryGroups).map(([groupName, groupGames]) => {
-            if (groupGames.length === 0) return null;
-            
-            const hasAddGame = !groupPlatforms && groupName === 'All Games';
-            let activeIndex = -1;
-            
-            if (!trackAnchorId && hasAddGame) {
-              activeIndex = 0;
-            } else if (trackAnchorId) {
-              const idx = groupGames.findIndex(g => g.id === trackAnchorId);
-              if (idx !== -1) {
-                activeIndex = hasAddGame ? idx + 1 : idx;
-              }
-            }
-            
-            // Base offset 64px from the left edge. Tile width 100px + 16px gap = 116px per step.
-            const translateX = activeIndex !== -1 ? `calc(64px - ${activeIndex * 116}px)` : '64px';
+          
+          {!showFullLibrary ? (
+            /* --- HOME SCREEN VIEW --- */
+            <div className="library-group">
+              <div 
+                className="tile-grid-horizontal"
+                style={{ 
+                  transform: `translateX(${trackAnchorId ? `calc(64px - ${
+                    (homeGames.findIndex(g => g.id === trackAnchorId) !== -1 
+                      ? (homeGames.findIndex(g => g.id === trackAnchorId) + 1)
+                      : (focusedGame === 'library' ? homeGames.length + 1 : 0)
+                    ) * 132}px)` : '64px'})`, 
+                  transition: 'transform 0.4s cubic-bezier(0.25, 1, 0.5, 1)' 
+                }}
+              >
+                {/* Add Game Tile */}
+                <button 
+                  autoFocus 
+                  className={`game-tile tile-add ${(!focusedGame || focusedGame === 'add') ? 'focused size-md' : 'size-sm'}`} 
+                  tabIndex={0} 
+                  onClick={() => {setEditingGame(null); setIsEditing(true);}} 
+                  onFocus={(e) => { setFocusedGame('add'); setTrackAnchorId(null); }}
+                  onMouseEnter={() => { setFocusedGame('add'); setTrackAnchorId(null); }}
+                >
+                  <span className="tile-add-icon"><Plus size={40} /></span>
+                  {(!focusedGame || focusedGame === 'add') && <span>Add Game</span>}
+                </button>
 
-            return (
-              <div key={groupName} className="library-group">
-                {groupPlatforms && <h2 className="section-label" style={{marginLeft: '24px'}}>{groupName}</h2>}
-                <div 
-                  className="tile-grid-horizontal"
-                  style={{ 
-                    transform: `translateX(${translateX})`, 
-                    transition: 'transform 0.4s cubic-bezier(0.25, 1, 0.5, 1)' 
+                {/* 10 Home Games */}
+                {homeGames.map(renderTile)}
+
+                {/* Game Library Tile */}
+                <button 
+                  className={`game-tile tile-library ${focusedGame === 'library' ? 'focused size-md' : 'size-sm'}`} 
+                  tabIndex={0} 
+                  onClick={() => setShowFullLibrary(true)} 
+                  onFocus={() => { setFocusedGame('library'); setTrackAnchorId('library'); }}
+                  onMouseEnter={() => { setFocusedGame('library'); setTrackAnchorId('library'); }}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      setShowFullLibrary(true);
+                    }
                   }}
                 >
-                  {hasAddGame && (
-                    <button autoFocus className={`game-tile tile-add ${!focusedGame ? 'focused size-md' : 'size-sm'}`} tabIndex={0} onClick={() => {setEditingGame(null); setIsEditing(true);}} onFocus={(e) => handleFocus(null, e)} onMouseEnter={() => setFocusedGame(null)}>
-                      <span className="tile-add-icon">+</span>
-                      {(!focusedGame) && <span>Add Game</span>}
-                    </button>
-                  )}
-                  {groupGames.map(renderTile)}
-                </div>
+                  <div className="game-tile-cover-wrap library-cover">
+                    <img src={libraryTileImg} alt="Game Library" draggable={false} loading="lazy" className="library-tile-icon" />
+                  </div>
+                </button>
               </div>
-            );
-          })}
-          {processedLibrary.length === 0 && <div style={{padding: '40px', color: 'var(--text-muted)'}}>No games match your search/filters.</div>}
+            </div>
+          ) : (
+            /* --- FULL LIBRARY VIEW --- */
+            <div className="full-library-view">
+              <div className="full-library-header">
+                <h2>Game Library</h2>
+                <button className="btn-secondary" onClick={() => setShowFullLibrary(false)}>Esc / Back</button>
+              </div>
+              
+              {Object.entries(libraryGroups).map(([groupName, groupGames]) => {
+                if (groupGames.length === 0) return null;
+                return (
+                  <div key={groupName} className="library-group">
+                    {groupPlatforms && <h2 className="section-label">{groupName}</h2>}
+                    <div className="tile-grid">
+                      {groupGames.map((game) => {
+                        const isFocused = focusedGame && focusedGame.id === game.id;
+                        const iconSrc = game.icon_path ? `file://${game.icon_path.replace(/\\/g, '/')}` : null;
+                        return (
+                          <div
+                            key={game.id}
+                            className="game-tile size-sm" /* Fixed size for grid */
+                            tabIndex={0}
+                            onClick={() => setSelectedGameDetails(game)}
+                            onKeyDown={(e) => {
+                              if ((e.key === 'Enter' || e.key === ' ') && e.target === e.currentTarget) { 
+                                e.preventDefault(); setSelectedGameDetails(game); 
+                              }
+                            }}
+                          >
+                            <div className="game-tile-cover-wrap">
+                              {iconSrc ? (
+                                <img src={iconSrc} alt={game.display_name} draggable={false} loading="lazy" />
+                              ) : (
+                                <div className="game-tile-placeholder"><Gamepad2 size={48} opacity={0.4} /></div>
+                              )}
+                              {game.favorite && <span className="game-tile-fav"><Star fill="#fff" color="#fff" size={18} /></span>}
+                              <span className="game-tile-platform">{game.platform}</span>
+                            </div>
+                            <div className="grid-tile-title">{game.display_name}</div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </div>
+        )}
       </div>
       
       {/* Lower Details Area */}
-      {displayGame && (
-        <div className="focused-game-footer">
-          <h2 className="focused-game-title">{displayGame.display_name}</h2>
-          <div className="focused-game-meta">
-            {displayGame.developer && <span>{displayGame.developer}</span>}
-            {displayGame.year && <span> • {displayGame.year}</span>}
-            {displayGame.genre && displayGame.genre.length > 0 && <span> • {displayGame.genre.join(', ')}</span>}
-          </div>
-          <p className="focused-game-desc">{displayGame.description || 'No description available.'}</p>
-        </div>
-      )}
-      {!displayGame && !focusedGame && (
-        <div className="focused-game-footer">
-          <h2 className="focused-game-title">Add a Game</h2>
-          <p className="focused-game-desc">Manually configure a new PC game or emulator game.</p>
-        </div>
+      {!showFullLibrary && !selectedGameDetails && (
+        <>
+          {displayGame && typeof displayGame === 'object' && (
+            <div className="focused-game-footer">
+              <h2 className="focused-game-title">{displayGame.display_name}</h2>
+              <div className="focused-game-meta">
+                {displayGame.developer && <span>{displayGame.developer}</span>}
+                {displayGame.year && <span> • {displayGame.year}</span>}
+                {displayGame.genre && displayGame.genre.length > 0 && <span> • {displayGame.genre.join(', ')}</span>}
+              </div>
+              <p className="focused-game-desc">{displayGame.description || 'No description available.'}</p>
+            </div>
+          )}
+          {(!displayGame || focusedGame === 'add') && focusedGame !== 'library' && (
+            <div className="focused-game-footer">
+              <h2 className="focused-game-title">Add a Game</h2>
+              <p className="focused-game-desc">Manually configure a new PC game or emulator game.</p>
+            </div>
+          )}
+          {focusedGame === 'library' && (
+            <div className="focused-game-footer">
+              <h2 className="focused-game-title">Game Library</h2>
+              <p className="focused-game-desc">View and manage your complete collection of games.</p>
+            </div>
+          )}
+        </>
       )}
 
       {isEditing && <GameEditor game={editingGame} emulators={emulators} onClose={() => setIsEditing(false)} onSave={handleSaveGame} />}

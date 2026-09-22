@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import EmulatorEditor from '../../components/EmulatorEditor/EmulatorEditor';
 import { useToast } from '../../components/Toast/ToastProvider';
+import { Cpu, Play, Pencil, Trash2, Plus } from 'lucide-react';
 import './EmulatorsPage.css';
 
 export default function EmulatorsPage({ searchQuery }) {
@@ -93,7 +94,7 @@ export default function EmulatorsPage({ searchQuery }) {
             <div key={emu.id} className="emu-card" tabIndex={0} onClick={(e) => handleEdit(e, emu)}>
               <div className="emu-header">
                 <div className="emu-icon">
-                  {iconSrc ? <img src={iconSrc} alt="" draggable="false"/> : '⚙'}
+                  {iconSrc ? <img src={iconSrc} alt="" draggable="false"/> : <Cpu size={32} opacity={0.6} />}
                 </div>
                 <div className="emu-title-group">
                   <div className="emu-name">{emu.display_name}</div>
@@ -120,13 +121,13 @@ export default function EmulatorsPage({ searchQuery }) {
               
               <div className="emu-actions">
                 <button className="btn-open" onClick={(e) => handleOpen(e, emu)} tabIndex={0}>
-                  ▶ Open
+                  <Play size={16} fill="currentColor" /> Open
                 </button>
                 <button className="btn-secondary" onClick={(e) => handleEdit(e, emu)} tabIndex={0}>
-                  ✏ Edit
+                  <Pencil size={16} /> Edit
                 </button>
                 <button className="btn-secondary danger" onClick={(e) => handleRemove(e, emu)} tabIndex={0}>
-                  ✕ Remove
+                  <Trash2 size={16} /> Remove
                 </button>
               </div>
             </div>
@@ -134,7 +135,7 @@ export default function EmulatorsPage({ searchQuery }) {
         })}
 
         <button className="emu-card emu-card-add" onClick={handleAdd} tabIndex={0}>
-          <span className="emu-add-icon">+</span>
+          <span className="emu-add-icon"><Plus size={48} /></span>
           Add Emulator
         </button>
       </div>

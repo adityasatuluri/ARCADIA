@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useToast } from '../../components/Toast/ToastProvider';
+import { Download, UploadCloud, FolderOpen, RefreshCw } from 'lucide-react';
 import './SavesPage.css';
 import SaveConflictModal from '../../components/SaveConflictModal/SaveConflictModal';
 
@@ -78,8 +79,8 @@ export default function SavesPage({ searchQuery }) {
     <div className="saves-page">
       <div className="saves-header-row">
         <h2 className="section-label">Save Manager</h2>
-        <button className="btn-primary" onClick={handlePopulateAll} tabIndex={0}>
-          [ POPULATE ALL SAVES ]
+        <button className="btn-primary" style={{ display: 'flex', alignItems: 'center', gap: '8px' }} onClick={handlePopulateAll} tabIndex={0}>
+          <RefreshCw size={16} /> Populate All Saves
         </button>
       </div>
 
@@ -107,24 +108,27 @@ export default function SavesPage({ searchQuery }) {
             <div className="save-actions">
               <button 
                 className="btn-secondary" 
+                style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
                 onClick={() => setConflictTarget({ id: s.gameId, isPopulate: true })}
                 tabIndex={0}
               >
-                Populate Save
+                <Download size={16} /> Populate Save
               </button>
               <button 
-                className="btn-secondary" 
+                className="btn-secondary"
+                style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
                 onClick={() => handleBackup(s.gameId)}
                 tabIndex={0}
               >
-                Backup
+                <UploadCloud size={16} /> Backup
               </button>
               <button 
-                className="btn-secondary" 
+                className="btn-secondary"
+                style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
                 onClick={() => handleOpenFolder(s.gameId)}
                 tabIndex={0}
               >
-                Open Backup Folder
+                <FolderOpen size={16} /> Open Backup Folder
               </button>
             </div>
           </div>

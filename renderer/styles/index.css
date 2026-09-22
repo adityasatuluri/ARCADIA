@@ -55,7 +55,7 @@ body {
   flex: 1;
   overflow-y: auto;
   overflow-x: hidden;
-  padding-top: var(--topbar-height);
+  padding-top: calc(var(--topbar-height) + 32px);
   scroll-behavior: smooth;
 }
 

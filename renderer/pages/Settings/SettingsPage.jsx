@@ -2,23 +2,28 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useGamepadConfig } from '../../context/GamepadContext';
 import { useTheme } from '../../theme/ThemeContext';
 import { useToast } from '../../components/Toast/ToastProvider';
+import {
+  Palette, Gamepad2, Joystick, FolderOpen, Save,
+  Image as ImageIcon, Rocket, Monitor, Search,
+  HardDrive, Wrench, Bell, Shield, Info
+} from 'lucide-react';
 import './SettingsPage.css';
 
 const CATEGORIES = [
-  { id: 'appearance', icon: '🎨', title: 'Appearance' },
-  { id: 'controller', icon: '🎮', title: 'Controller' },
-  { id: 'emulators', icon: '🕹️', title: 'Emulators' },
-  { id: 'library', icon: '📁', title: 'Game Library' },
-  { id: 'saves', icon: '💾', title: 'Save Manager' },
-  { id: 'artwork', icon: '🖼️', title: 'Artwork & Metadata' },
-  { id: 'launch', icon: '🚀', title: 'Launch Behavior' },
-  { id: 'display', icon: '📊', title: 'Library Display' },
-  { id: 'search', icon: '🔍', title: 'Search' },
-  { id: 'storage', icon: '💿', title: 'Storage' },
-  { id: 'maintenance', icon: '🔧', title: 'Maintenance' },
-  { id: 'notifications', icon: '🔔', title: 'Notifications' },
-  { id: 'safety', icon: '🛡️', title: 'Safety' },
-  { id: 'about', icon: 'ℹ️', title: 'About' }
+  { id: 'appearance', icon: <Palette size={20} />, title: 'Appearance' },
+  { id: 'controller', icon: <Gamepad2 size={20} />, title: 'Controller' },
+  { id: 'emulators', icon: <Joystick size={20} />, title: 'Emulators' },
+  { id: 'library', icon: <FolderOpen size={20} />, title: 'Game Library' },
+  { id: 'saves', icon: <Save size={20} />, title: 'Save Manager' },
+  { id: 'artwork', icon: <ImageIcon size={20} />, title: 'Artwork & Metadata' },
+  { id: 'launch', icon: <Rocket size={20} />, title: 'Launch Behavior' },
+  { id: 'display', icon: <Monitor size={20} />, title: 'Library Display' },
+  { id: 'search', icon: <Search size={20} />, title: 'Search' },
+  { id: 'storage', icon: <HardDrive size={20} />, title: 'Storage' },
+  { id: 'maintenance', icon: <Wrench size={20} />, title: 'Maintenance' },
+  { id: 'notifications', icon: <Bell size={20} />, title: 'Notifications' },
+  { id: 'safety', icon: <Shield size={20} />, title: 'Safety' },
+  { id: 'about', icon: <Info size={20} />, title: 'About' }
 ];
 
 export default function SettingsPage() {

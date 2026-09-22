@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { X } from 'lucide-react';
 import './GameEditor.css';
 import { useModalFocus } from '../../hooks/useModalFocus';
 
@@ -127,8 +128,8 @@ export default function GameEditor({ game, onClose, onSave }) {
     <div className="game-editor-overlay" ref={modalRef}>
       <div className="game-editor-modal">
         <div className="game-editor-header">
-          <h2>{game ? 'Edit Game' : 'Add Game'}</h2>
-          <button className="game-editor-close" onClick={onClose} tabIndex={0}>✕</button>
+          <h2>{game ? 'Edit Game' : 'Add New Game'}</h2>
+          <button className="game-editor-close" onClick={onClose} tabIndex={0}><X size={20} /></button>
         </div>
         
         <form className="game-editor-form" onSubmit={handleSubmit}>

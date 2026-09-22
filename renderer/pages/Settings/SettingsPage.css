@@ -1,62 +1,69 @@
 /* ============================================================
-   ARCADIA — Settings Page Master-Detail Layout
+   ARCADIA — Settings Page Console Layout
    ============================================================ */
 
 .settings-page {
   display: flex;
   height: 100%;
+  background: var(--bg-primary);
 }
 
 .settings-sidebar {
-  width: 280px;
-  background: rgba(0, 0, 0, 0.2);
-  border-right: 1px solid var(--border-subtle);
+  width: 320px;
   display: flex;
   flex-direction: column;
-  padding: 32px 0;
+  padding: 40px 0 40px 32px;
   overflow-y: auto;
   flex-shrink: 0;
+  border-right: 1px solid var(--border-subtle);
+  background: transparent;
 }
 
 .settings-categories {
   display: flex;
   flex-direction: column;
+  gap: 4px;
+  padding-right: 24px;
 }
 
 .settings-cat-btn {
   display: flex;
   align-items: center;
   gap: 16px;
-  padding: 12px 24px;
+  padding: 16px 20px;
   background: transparent;
   border: none;
+  border-radius: var(--radius-md);
   color: var(--text-secondary);
   font-family: inherit;
-  font-size: 14px;
+  font-size: 16px;
   font-weight: 500;
   text-align: left;
   cursor: pointer;
-  transition: all 0.2s;
-  border-left: 3px solid transparent;
+  transition: all 0.2s cubic-bezier(0.2, 0.8, 0.2, 1);
   outline: none;
 }
 
 .settings-cat-icon {
-  font-size: 18px;
-  opacity: 0.8;
+  font-size: 22px;
+  opacity: 0.7;
 }
 
 .settings-cat-btn:hover {
   background: var(--bg-surface-hover);
   color: var(--text-primary);
+  transform: translateX(4px);
 }
 
 .settings-cat-btn:focus,
 .settings-cat-btn.active {
-  background: rgba(59, 130, 246, 0.1); /* fallback accent */
   background: var(--bg-surface-active);
   color: var(--text-accent);
-  border-left-color: var(--accent-primary);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+  font-weight: 600;
+}
+.settings-cat-btn.active .settings-cat-icon {
+  opacity: 1;
 }
 
 .settings-content {
@@ -67,17 +74,17 @@
 
 .settings-panel {
   max-width: 800px;
-  animation: fadeIn 0.3s ease-out forwards;
+  animation: fadeInRight 0.4s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
 }
 
-@keyframes fadeIn {
-  from { opacity: 0; transform: translateY(10px); }
-  to { opacity: 1; transform: translateY(0); }
+@keyframes fadeInRight {
+  from { opacity: 0; transform: translateX(20px); }
+  to { opacity: 1; transform: translateX(0); }
 }
 
 .settings-panel h2 {
   font-size: 28px;
-  font-weight: 600;
+  font-weight: 700;
   margin-bottom: 24px;
   color: var(--text-accent);
   letter-spacing: 0.5px;
@@ -86,35 +93,35 @@
 .settings-group {
   display: flex;
   flex-direction: column;
-  background: var(--bg-surface);
+  background: var(--bg-glass);
+  backdrop-filter: blur(var(--blur-md));
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-lg);
-  padding: 24px;
+  padding: 8px;
+  box-shadow: var(--shadow-md);
 }
 
 .settings-row {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 16px 0;
+  padding: 14px 16px;
   border-bottom: 1px solid var(--border-subtle);
   color: var(--text-primary);
-  font-size: 15px;
+  font-size: 14px;
+  font-weight: 500;
   outline: none;
   transition: all 0.2s;
   cursor: pointer;
+  border-radius: var(--radius-md);
 }
 
 .settings-row:hover,
 .settings-row:focus-within,
 .settings-row:focus {
   background: var(--bg-surface-hover);
-  border-radius: 8px;
-  padding-left: 12px;
-  padding-right: 12px;
-  margin-left: -12px;
-  margin-right: -12px;
   border-bottom-color: transparent;
+  transform: scale(1.01);
 }
 
 .settings-row:last-child {
@@ -123,61 +130,79 @@
 
 .settings-row select,
 .settings-row input[type="text"],
-.settings-row input[type="password"] {
-  background: var(--bg-primary);
+.settings-row input[type="password"],
+.settings-row input[type="number"] {
+  background: rgba(0,0,0,0.2);
   border: 1px solid var(--border-subtle);
   color: var(--text-primary);
-  padding: 8px 12px;
+  padding: 10px 16px;
   border-radius: var(--radius-sm);
   font-family: inherit;
-  font-size: 14px;
+  font-size: 15px;
   outline: none;
+  transition: all 0.2s;
 }
 
 .settings-row select:focus,
 .settings-row input:focus {
   border-color: var(--accent-primary);
-  box-shadow: 0 0 0 2px var(--accent-glow);
+  background: rgba(0,0,0,0.4);
+  box-shadow: 0 0 0 3px var(--accent-glow);
 }
 
 .settings-row input[type="checkbox"] {
-  width: 18px;
-  height: 18px;
+  width: 22px;
+  height: 22px;
   accent-color: var(--accent-primary);
   cursor: pointer;
 }
 
-/* Existing Button Styles ported */
+/* Button Styles for Console Feel */
 .btn-primary {
   padding: 8px 16px;
   background: var(--accent-primary);
   color: #fff;
-  border: none;
+  border: 1px solid var(--accent-hover);
   border-radius: var(--radius-sm);
   font-size: 14px;
-  font-weight: 500;
+  font-weight: 600;
   cursor: pointer;
-  transition: all var(--transition-fast);
+  transition: all 0.2s cubic-bezier(0.2, 0.8, 0.2, 1);
+  box-shadow: var(--shadow-sm);
 }
-.btn-primary:hover:not(:disabled) { background: var(--accent-hover); }
+.btn-primary:hover:not(:disabled), .btn-primary:focus {
+  background: var(--accent-hover);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px var(--accent-glow);
+  outline: none;
+}
 .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
 
 .btn-secondary {
   padding: 8px 16px;
-  background: var(--bg-surface-hover);
+  background: rgba(0,0,0,0.4);
   color: var(--text-primary);
-  border: 1px solid var(--border-subtle);
+  border: 1px solid var(--border-default);
   border-radius: var(--radius-sm);
   font-size: 14px;
   font-weight: 500;
   cursor: pointer;
-  transition: all var(--transition-fast);
+  transition: all 0.2s cubic-bezier(0.2, 0.8, 0.2, 1);
+  box-shadow: var(--shadow-sm);
 }
-.btn-secondary:hover { background: var(--bg-surface-active); }
-.btn-secondary.danger:hover {
-  background: rgba(239, 68, 68, 0.15);
-  border-color: rgba(239, 68, 68, 0.3);
-  color: var(--accent-danger);
+.btn-secondary:hover, .btn-secondary:focus {
+  background: rgba(255,255,255,0.1);
+  border-color: #fff;
+  color: #fff;
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+  outline: none;
+}
+.btn-secondary.danger:hover, .btn-secondary.danger:focus {
+  background: var(--accent-danger);
+  border-color: #ff6b6b;
+  color: #fff;
+  box-shadow: 0 4px 12px rgba(239, 68, 68, 0.4);
 }
 
 /* Progress stuff */

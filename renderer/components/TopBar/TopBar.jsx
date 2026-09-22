@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useTheme } from '../../theme/ThemeContext';
+import { Search, SlidersHorizontal } from 'lucide-react';
 import './TopBar.css';
 import arcadiaLogo from '../../assets/arcadia_top_bar_logo.png';
 
@@ -101,10 +102,7 @@ export default function TopBar({
       <div className="topbar-right">
         {/* Search */}
         <div className="topbar-search">
-          <svg className="topbar-search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <circle cx="11" cy="11" r="8"/>
-            <path d="m21 21-4.35-4.35"/>
-          </svg>
+          <Search className="topbar-search-icon" size={16} />
           <input 
             type="text" 
             placeholder={
@@ -128,7 +126,7 @@ export default function TopBar({
                  if (!e.currentTarget.contains(e.relatedTarget)) setIsSettingsOpen(false);
                }}>
             <button className="topbar-icon-btn view-btn" tabIndex={0} title="Library Settings" onClick={() => setIsSettingsOpen(!isSettingsOpen)}>
-              ⚙️ View
+              <SlidersHorizontal size={16} /> View
             </button>
             
             {isSettingsOpen && (

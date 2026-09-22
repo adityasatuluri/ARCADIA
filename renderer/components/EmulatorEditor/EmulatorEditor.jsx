@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { X } from 'lucide-react';
 import '../GameEditor/GameEditor.css'; // Reuse form styles
 import { useModalFocus } from '../../hooks/useModalFocus';
 
@@ -91,7 +92,7 @@ export default function EmulatorEditor({ emulator, onClose, onSave }) {
       <div className="game-editor-modal">
         <div className="game-editor-header">
           <h2>{emulator ? 'Edit Emulator' : 'Add Emulator'}</h2>
-          <button className="game-editor-close" onClick={onClose} tabIndex={0}>✕</button>
+          <button className="game-editor-close" onClick={onClose} tabIndex={0}><X size={20} /></button>
         </div>
         
         <form className="game-editor-form" onSubmit={handleSubmit}>

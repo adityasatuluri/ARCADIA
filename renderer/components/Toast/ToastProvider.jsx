@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useCallback } from 'react';
+import { X, CheckCircle, AlertCircle, Info as InfoIcon } from 'lucide-react';
 import './Toast.css';
 
 const ToastContext = createContext();
@@ -24,17 +25,29 @@ export function ToastProvider({ children }) {
     setToasts((prev) => prev.filter((t) => t.id !== id));
   };
 
+  const getIcon = (type) => {
+    switch(type) {
+      case 'success': return <CheckCircle size={20} className="toast-icon" />;
+      case 'error': return <AlertCircle size={20} className="toast-icon" />;
+      case 'warning': return <AlertCircle size={20} className="toast-icon" />;
+      default: return <InfoIcon size={20} className="toast-icon" />;
+    }
+  };
+
   return (
     <ToastContext.Provider value={{ addToast }}>
       {children}
       <div className="toast-container">
         {toasts.map((t) => (
           <div key={t.id} className={`toast toast-${t.type}`}>
+            {getIcon(t.type)}
             <div className="toast-content">
               {t.title && <div className="toast-title">{t.title}</div>}
               {t.message && <div className="toast-message">{t.message}</div>}
             </div>
-            <button className="toast-close" onClick={() => removeToast(t.id)}>✕</button>
+            <button className="toast-close" onClick={() => removeToast(t.id)}>
+              <X size={16} />
+            </button>
           </div>
         ))}
       </div>
