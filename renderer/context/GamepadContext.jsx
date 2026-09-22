@@ -211,6 +211,7 @@ export function GamepadProvider({ children }) {
             case 'B': dispatchKey('Escape'); break;
             case 'LB': dispatchKey('PageUp'); break;
             case 'RB': dispatchKey('PageDown'); break;
+            case 'SELECT': dispatchKey('F9'); break;
           }
         }
       }
@@ -238,6 +239,7 @@ export function GamepadProvider({ children }) {
       handleInput('B', gp.buttons[1]?.pressed);
       handleInput('LB', gp.buttons[4]?.pressed);
       handleInput('RB', gp.buttons[5]?.pressed);
+      handleInput('SELECT', gp.buttons[8]?.pressed);
 
       // Triggers
       const lt = gp.buttons[6]?.value || 0;

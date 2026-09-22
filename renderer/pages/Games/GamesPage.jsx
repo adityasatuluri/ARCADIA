@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import GameEditor from '../../components/GameEditor/GameEditor';
 import './GamesPage.css';
+import defaultBg from '../../assets/background.png';
 
 export default function GamesPage({ 
   searchQuery, 
@@ -16,6 +17,7 @@ export default function GamesPage({
 
   // Interaction State
   const [focusedGame, setFocusedGame] = useState(null);
+  const [trackAnchorId, setTrackAnchorId] = useState(null);
   const [editingGame, setEditingGame] = useState(null);
   const [isEditing, setIsEditing] = useState(false);
 
@@ -41,17 +43,38 @@ export default function GamesPage({
     }
   }, [games, focusedGame]);
 
+  // Patch all .game-tile focus methods to prevent the browser's instant native scroll jump
+  // which clashes with our smooth CSS translateX carousel animation.
+  useEffect(() => {
+    const tiles = document.querySelectorAll('.game-tile');
+    tiles.forEach(t => {
+      if (!t.dataset.patchedFocus) {
+        const originalFocus = t.focus.bind(t);
+        t.focus = (options) => {
+          try {
+            originalFocus({ ...(options || {}), preventScroll: true });
+          } catch (e) {
+            originalFocus();
+          }
+        };
+        t.dataset.patchedFocus = true;
+      }
+    });
+  });
+
   const handleTileClick = async (game) => {
     if (!window.arcadiaAPI) return;
     try {
-      const res = await window.arcadiaAPI.launcher.launchGame(game.id);
+      const res = await window.arcadiaAPI.launcher.launch(game.id);
       if (!res.success) {
         alert('Launch Error: ' + res.error);
+      } else {
+        // Optionally refresh to update last_played and play_count
+        loadData();
       }
-    } catch (err) {
-      alert('Launch Error: ' + err.message);
+    } catch (e) {
+      alert('Launch Error: ' + e.message);
     }
-    loadData();
   };
 
   const handleToggleFav = async () => {
@@ -80,6 +103,11 @@ export default function GamesPage({
     }
   };
 
+  const handleFocus = (game, e) => {
+    setFocusedGame(game);
+    setTrackAnchorId(game ? game.id : null);
+  };
+
   const renderTile = (game) => {
     const isFocused = focusedGame && focusedGame.id === game.id;
     const iconSrc = game.icon_path ? `file://${game.icon_path.replace(/\\/g, '/')}` : null;
@@ -87,10 +115,10 @@ export default function GamesPage({
     return (
       <div
         key={game.id}
-        className={`game-tile size-${tileSize} ${isFocused ? 'focused' : ''}`}
+        className={`game-tile ${isFocused ? 'focused size-md' : 'size-sm'}`}
         tabIndex={0}
         onClick={() => handleTileClick(game)}
-        onFocus={() => setFocusedGame(game)}
+        onFocus={(e) => handleFocus(game, e)}
         onMouseEnter={() => setFocusedGame(game)}
         onKeyDown={(e) => {
           if ((e.key === 'Enter' || e.key === ' ') && e.target === e.currentTarget) { 
@@ -108,12 +136,11 @@ export default function GamesPage({
           {game.favorite && <span className="game-tile-fav">⭐</span>}
           <span className="game-tile-platform">{game.platform}</span>
         </div>
-        <div className="game-tile-name">{game.display_name}</div>
         
         {isFocused && (
           <div className="tile-action-column">
             <button className="tile-action-btn" onClick={(e) => { e.stopPropagation(); handleToggleFav(); }}>
-              {game.favorite ? '★ Unfavorite' : '☆ Favorite'}
+              {game.favorite ? '★ Unfav' : '☆ Fav'}
             </button>
             <button className="tile-action-btn" onClick={(e) => { e.stopPropagation(); setEditingGame(game); setIsEditing(true); }}>
               ✏ Edit
@@ -197,7 +224,8 @@ export default function GamesPage({
     );
   }
 
-  const bgSrc = focusedGame?.background_path ? `file://${focusedGame.background_path.replace(/\\/g, '/')}` : null;
+  const displayGame = focusedGame;
+  const bgSrc = displayGame?.background_path ? `file://${displayGame.background_path.replace(/\\/g, '/')}` : defaultBg;
 
   return (
     <div className="games-page">
@@ -211,25 +239,67 @@ export default function GamesPage({
 
       <div className="library-content-area">
         <div className="library-grids">
-          {Object.entries(libraryGroups).map(([groupName, groupGames]) => (
-            groupGames.length > 0 && (
+          {Object.entries(libraryGroups).map(([groupName, groupGames]) => {
+            if (groupGames.length === 0) return null;
+            
+            const hasAddGame = !groupPlatforms && groupName === 'All Games';
+            let activeIndex = -1;
+            
+            if (!trackAnchorId && hasAddGame) {
+              activeIndex = 0;
+            } else if (trackAnchorId) {
+              const idx = groupGames.findIndex(g => g.id === trackAnchorId);
+              if (idx !== -1) {
+                activeIndex = hasAddGame ? idx + 1 : idx;
+              }
+            }
+            
+            // Base offset 64px from the left edge. Tile width 100px + 16px gap = 116px per step.
+            const translateX = activeIndex !== -1 ? `calc(64px - ${activeIndex * 116}px)` : '64px';
+
+            return (
               <div key={groupName} className="library-group">
-                {groupPlatforms && <h2 className="section-label">{groupName}</h2>}
-                <div className="tile-grid">
-                  {groupGames.map(renderTile)}
-                  {(!groupPlatforms && groupName === 'All Games') && (
-                    <button className={`game-tile size-${tileSize} tile-add`} tabIndex={0} onClick={() => {setEditingGame(null); setIsEditing(true);}}>
+                {groupPlatforms && <h2 className="section-label" style={{marginLeft: '24px'}}>{groupName}</h2>}
+                <div 
+                  className="tile-grid-horizontal"
+                  style={{ 
+                    transform: `translateX(${translateX})`, 
+                    transition: 'transform 0.4s cubic-bezier(0.25, 1, 0.5, 1)' 
+                  }}
+                >
+                  {hasAddGame && (
+                    <button autoFocus className={`game-tile tile-add ${!focusedGame ? 'focused size-md' : 'size-sm'}`} tabIndex={0} onClick={() => {setEditingGame(null); setIsEditing(true);}} onFocus={(e) => handleFocus(null, e)} onMouseEnter={() => setFocusedGame(null)}>
                       <span className="tile-add-icon">+</span>
-                      Add Game
+                      {(!focusedGame) && <span>Add Game</span>}
                     </button>
                   )}
+                  {groupGames.map(renderTile)}
                 </div>
               </div>
-            )
-          ))}
+            );
+          })}
           {processedLibrary.length === 0 && <div style={{padding: '40px', color: 'var(--text-muted)'}}>No games match your search/filters.</div>}
         </div>
       </div>
+      
+      {/* Lower Details Area */}
+      {displayGame && (
+        <div className="focused-game-footer">
+          <h2 className="focused-game-title">{displayGame.display_name}</h2>
+          <div className="focused-game-meta">
+            {displayGame.developer && <span>{displayGame.developer}</span>}
+            {displayGame.year && <span> • {displayGame.year}</span>}
+            {displayGame.genre && displayGame.genre.length > 0 && <span> • {displayGame.genre.join(', ')}</span>}
+          </div>
+          <p className="focused-game-desc">{displayGame.description || 'No description available.'}</p>
+        </div>
+      )}
+      {!displayGame && !focusedGame && (
+        <div className="focused-game-footer">
+          <h2 className="focused-game-title">Add a Game</h2>
+          <p className="focused-game-desc">Manually configure a new PC game or emulator game.</p>
+        </div>
+      )}
 
       {isEditing && <GameEditor game={editingGame} emulators={emulators} onClose={() => setIsEditing(false)} onSave={handleSaveGame} />}
     </div>

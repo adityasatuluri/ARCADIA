@@ -4,6 +4,7 @@ import { GamepadProvider } from './context/GamepadContext';
 import TopBar from './components/TopBar/TopBar';
 import GamesPage from './pages/Games/GamesPage';
 import EmulatorsPage from './pages/Emulators/EmulatorsPage';
+import SavesPage from './pages/Saves/SavesPage';
 import SettingsPage from './pages/Settings/SettingsPage';
 import ControllerHints from './components/ControllerHints/ControllerHints';
 
@@ -14,7 +15,7 @@ function AppShell() {
   const [searchQuery, setSearchQuery] = useState('');
   const [sortBy, setSortBy] = useState('name_asc');
   const [favoritesFirst, setFavoritesFirst] = useState(false);
-  const [groupPlatforms, setGroupPlatforms] = useState(true);
+  const [groupPlatforms, setGroupPlatforms] = useState(false);
   const [hideNoArt, setHideNoArt] = useState(false);
   const [tileSize, setTileSize] = useState('md');
 
@@ -23,7 +24,7 @@ function AppShell() {
     function handleGlobalKeys(e) {
       // F5 / Ctrl+R: prevent reload in production feel
       // LB/RB simulation via PageUp/PageDown
-      const tabs = ['games', 'emulators', 'settings'];
+      const tabs = ['games', 'emulators', 'saves', 'settings'];
       const idx = tabs.indexOf(activeTab);
 
       if (e.key === 'PageDown' || (e.key === 'ArrowRight' && e.altKey)) {
@@ -49,6 +50,9 @@ function AppShell() {
   switch (activeTab) {
     case 'emulators':
       PageComponent = <EmulatorsPage searchQuery={searchQuery} />;
+      break;
+    case 'saves':
+      PageComponent = <SavesPage searchQuery={searchQuery} />;
       break;
     case 'settings':
       PageComponent = <SettingsPage />;

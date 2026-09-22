@@ -37,6 +37,15 @@ contextBridge.exposeInMainWorld('arcadiaAPI', {
     getAll: () => ipcRenderer.invoke('settings:get-all'),
     get: (key) => ipcRenderer.invoke('settings:get', key),
     set: (key, value) => ipcRenderer.invoke('settings:set', key, value)
+  },
+  saves: {
+    getStatus: (id) => ipcRenderer.invoke('saves:get-status', id),
+    getAllStatuses: () => ipcRenderer.invoke('saves:get-all-statuses'),
+    backup: (id) => ipcRenderer.invoke('saves:backup', id),
+    getHistory: (id) => ipcRenderer.invoke('saves:get-history', id),
+    openFolder: (id) => ipcRenderer.invoke('saves:open-folder', id),
+    populate: (id, mode) => ipcRenderer.invoke('saves:populate', id, mode),
+    populateAll: (mode) => ipcRenderer.invoke('saves:populate-all', mode)
   }
 });
 

@@ -106,7 +106,20 @@ export default function GameEditor({ game, onClose, onSave }) {
     const properties = isDir ? ['openDirectory'] : ['openFile'];
     const path = await window.arcadiaAPI.system.showOpenDialog({ properties, filters });
     if (path) {
-      setFormData(prev => ({ ...prev, [field]: path }));
+      setFormData(prev => {
+        const next = { ...prev, [field]: path };
+        if (field === 'executable' && prev.type === 'pc') {
+          // Default working directory to exe's folder if empty or same directory
+          const lastSlash = Math.max(path.lastIndexOf('\\'), path.lastIndexOf('/'));
+          if (lastSlash > -1) {
+            const dir = path.substring(0, lastSlash);
+            if (!prev.working_directory || prev.working_directory.trim() === '') {
+              next.working_directory = dir;
+            }
+          }
+        }
+        return next;
+      });
     }
   };
 

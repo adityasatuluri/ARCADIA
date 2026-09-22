@@ -13,6 +13,7 @@ if (!gotTheLock) {
       height: 720,
       title: 'Arcadia',
       backgroundColor: '#0a0e17',
+      icon: path.join(__dirname, '..', '..', 'assets', 'app_icon.png'),
       webPreferences: {
         nodeIntegration: false,
         contextIsolation: true,

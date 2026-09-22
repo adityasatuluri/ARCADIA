@@ -30,15 +30,26 @@ export default function SettingsPage() {
     updateConfig, vibrate
   } = useGamepadConfig();
 
-  useEffect(() => {
-    if (!window.arcadiaAPI) return;
-    window.arcadiaAPI.settings.getAll().then(res => {
-      if (res.success && res.data && res.data.library_locations) {
-        setLibraryPaths(res.data.library_locations);
-      }
-    });
+  const [globalSettings, setGlobalSettings] = useState({});
 
-    const unsubscribe = window.arcadiaAPI.scanner.onProgress((data) => {
+  useEffect(() => {
+    async function load() {
+      if (window.arcadiaAPI) {
+        const libs = await window.arcadiaAPI.settings.get('library_paths');
+        if (libs.success && libs.data) setLibraryPaths(libs.data);
+
+        const allSettings = await window.arcadiaAPI.settings.getAll();
+        if (allSettings.success && allSettings.data) {
+          setGlobalSettings(allSettings.data);
+          if (allSettings.data.library_locations && (!libs.success || !libs.data)) {
+            setLibraryPaths(allSettings.data.library_locations);
+          }
+        }
+      }
+    }
+    load();
+
+    const unsubscribe = window.arcadiaAPI?.scanner?.onProgress((data) => {
       setProgressData(data);
     });
     
@@ -50,6 +61,12 @@ export default function SettingsPage() {
   const savePaths = async (newPaths) => {
     setLibraryPaths(newPaths);
     if (window.arcadiaAPI) await window.arcadiaAPI.settings.set('library_locations', newPaths);
+  };
+
+  const handleSetGlobalSetting = async (key, value) => {
+    if (!window.arcadiaAPI) return;
+    await window.arcadiaAPI.settings.set(key, value);
+    setGlobalSettings(prev => ({ ...prev, [key]: value }));
   };
 
   const handleAddFolder = async () => {
@@ -195,6 +212,52 @@ export default function SettingsPage() {
                   <option value="ps">PlayStation (Cross, Circle, Square, Triangle)</option>
                   <option value="generic">Generic (Confirm, Cancel)</option>
                 </select>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="library-locations-section" style={{ marginTop: '32px' }}>
+        <h2 className="section-label">Save Backups</h2>
+        <div className="library-card">
+          <p className="library-card-desc">Configure automatic save backups before launching and after exiting games.</p>
+          
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px', marginTop: '16px' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', color: 'rgba(255,255,255,0.7)', cursor: 'pointer' }} tabIndex={0} onKeyDown={e => { if (e.key === 'Enter') handleSetGlobalSetting('backup_before_launch', !globalSettings.backup_before_launch) }}>
+                <input type="checkbox" checked={globalSettings.backup_before_launch || false} onChange={e => handleSetGlobalSetting('backup_before_launch', e.target.checked)} tabIndex={-1} />
+                Backup before launch
+              </label>
+              
+              <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', color: 'rgba(255,255,255,0.7)', cursor: 'pointer' }} tabIndex={0} onKeyDown={e => { if (e.key === 'Enter') handleSetGlobalSetting('backup_on_exit', !globalSettings.backup_on_exit) }}>
+                <input type="checkbox" checked={globalSettings.backup_on_exit || false} onChange={e => handleSetGlobalSetting('backup_on_exit', e.target.checked)} tabIndex={-1} />
+                Backup on game exit
+              </label>
+            </div>
+            
+            <div>
+              <label style={{ display: 'block', fontSize: '13px', color: 'rgba(255,255,255,0.7)', marginBottom: '8px' }}>
+                Backup Directory
+              </label>
+              <div style={{ display: 'flex', gap: '8px' }}>
+                <input 
+                  type="text" 
+                  readOnly 
+                  value={globalSettings.backup_directory || 'D:/Arcadia/SaveBackups'} 
+                  style={{ flex: 1, padding: '8px', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.2)', color: '#fff', borderRadius: '4px' }} 
+                  tabIndex={0} 
+                />
+                <button 
+                  className="btn-secondary" 
+                  onClick={async () => {
+                    const res = await window.arcadiaAPI.system.showOpenDialog({ properties: ['openDirectory'] });
+                    if (res) handleSetGlobalSetting('backup_directory', res);
+                  }} 
+                  tabIndex={0}
+                >
+                  Browse...
+                </button>
               </div>
             </div>
           </div>

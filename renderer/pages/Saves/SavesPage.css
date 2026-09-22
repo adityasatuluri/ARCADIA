@@ -1,0 +1,122 @@
+/* ============================================================
+   ARCADIA — Saves Page
+   ============================================================ */
+
+.saves-page {
+  padding: 24px 32px 40px;
+  min-height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.saves-header-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24px;
+}
+
+.saves-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.save-card {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  padding: 20px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 24px;
+  transition: all var(--transition-fast);
+  outline: none;
+}
+
+.save-card:focus, .save-card:focus-visible {
+  border-color: var(--accent-primary);
+  background: var(--bg-surface-hover);
+  box-shadow: 0 0 0 2px var(--accent-glow);
+}
+
+.save-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.save-name {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.save-meta {
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.save-path {
+  font-size: 13px;
+  color: var(--text-muted);
+  background: rgba(0,0,0,0.3);
+  padding: 6px 10px;
+  border-radius: var(--radius-sm);
+  font-family: monospace;
+  word-break: break-all;
+}
+
+.path-label {
+  color: var(--text-secondary);
+  font-family: sans-serif;
+  margin-right: 6px;
+}
+
+.save-status-indicators {
+  display: flex;
+  gap: 12px;
+  margin-top: 4px;
+}
+
+.status-badge {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  padding: 4px 8px;
+  border-radius: 12px;
+  background: rgba(255,255,255,0.1);
+  color: var(--text-secondary);
+}
+
+.status-badge.status-ok {
+  background: rgba(16, 185, 129, 0.2);
+  color: #34d399;
+}
+
+.status-badge.status-err {
+  background: rgba(239, 68, 68, 0.2);
+  color: #f87171;
+}
+
+.save-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 160px;
+}
+
+.save-actions button {
+  width: 100%;
+}
+
+.saves-empty {
+  padding: 40px;
+  text-align: center;
+  color: var(--text-muted);
+  background: var(--bg-surface);
+  border-radius: var(--radius-lg);
+  border: 1px dashed var(--border-subtle);
+}

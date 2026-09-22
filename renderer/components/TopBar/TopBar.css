@@ -193,7 +193,7 @@
   top: 100%;
   margin-top: 12px;
   right: 0;
-  background: var(--bg-surface);
+  background: var(--bg-glass-heavy);
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-md);
   padding: 16px;
@@ -203,7 +203,7 @@
   flex-direction: column;
   gap: 16px;
   z-index: 1000;
-  backdrop-filter: blur(12px);
+  backdrop-filter: blur(16px);
 }
 
 /* Invisible bridge to prevent hover loss */

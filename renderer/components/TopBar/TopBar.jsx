@@ -6,6 +6,7 @@ import arcadiaLogo from '../../assets/arcadia_top_bar_logo.png';
 const TABS = [
   { id: 'games', label: 'Games' },
   { id: 'emulators', label: 'Emulators' },
+  { id: 'saves', label: 'Saves' },
   { id: 'settings', label: 'Settings' }
 ];
 
@@ -38,6 +39,40 @@ export default function TopBar({
     const id = setInterval(tick, 10000);
     return () => clearInterval(id);
   }, []);
+
+  useEffect(() => {
+    function handleKeyDown(e) {
+      if (activeTab !== 'games') return;
+      if (e.key === 'F9') {
+        setIsSettingsOpen(prev => {
+          const nextState = !prev;
+          if (nextState) {
+            setTimeout(() => {
+              const firstItem = document.querySelector('.topbar-settings-menu [tabIndex="0"]');
+              if (firstItem) firstItem.focus();
+            }, 50);
+          } else {
+            // Return focus to grid if closing
+            const activeTile = document.querySelector('.game-tile.focused');
+            if (activeTile) activeTile.focus();
+          }
+          return nextState;
+        });
+      } else if (e.key === 'Escape') {
+        setIsSettingsOpen(prev => {
+          if (prev) {
+            setTimeout(() => {
+              const activeTile = document.querySelector('.game-tile.focused');
+              if (activeTile) activeTile.focus();
+            }, 50);
+          }
+          return false;
+        });
+      }
+    }
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [activeTab]);
 
   return (
     <header className="topbar">
