@@ -76,6 +76,57 @@ class LauncherService {
       throw new Error(`Failed to launch process: ${error.message}`);
     }
   }
+
+  async launchEmulator(emuId) {
+    const emu = dbService.getEmulatorById(emuId);
+    if (!emu) {
+      throw new Error(`Emulator with ID ${emuId} not found in database.`);
+    }
+    
+    if (!emu.executable) {
+      throw new Error('Executable path is not configured for this emulator.');
+    }
+
+    if (!fs.existsSync(emu.executable)) {
+      throw new Error(`Executable not found at path: ${emu.executable}`);
+    }
+
+    let cwd = emu.working_directory;
+    if (!cwd || cwd.trim() === '') {
+      cwd = path.dirname(emu.executable);
+    }
+
+    let args = [];
+    if (emu.arguments && emu.arguments.trim() !== '') {
+      const regex = /[^\s"]+|"([^"]*)"/gi;
+      let match;
+      while ((match = regex.exec(emu.arguments)) != null) {
+        args.push(match[1] ? match[1] : match[0]);
+      }
+    }
+
+    console.log(`[Launcher] Launching Emulator: ${emu.display_name}`);
+    console.log(`[Launcher] Executable: ${emu.executable}`);
+    console.log(`[Launcher] CWD: ${cwd}`);
+    console.log(`[Launcher] Args: ${JSON.stringify(args)}`);
+
+    try {
+      const isBatch = emu.executable.toLowerCase().endsWith('.bat') || emu.executable.toLowerCase().endsWith('.cmd');
+      
+      const child = spawn(emu.executable, args, {
+        cwd: cwd,
+        detached: true,
+        shell: isBatch,
+        stdio: 'ignore'
+      });
+
+      child.unref();
+      return { success: true, message: `Launched ${emu.display_name}` };
+    } catch (error) {
+      console.error(`[Launcher] Failed to launch ${emu.display_name}:`, error);
+      throw new Error(`Failed to launch emulator: ${error.message}`);
+    }
+  }
 }
 
 module.exports = new LauncherService();

@@ -3,282 +3,177 @@
    ============================================================ */
 
 .emulators-page {
-  padding: 28px 32px;
+  padding: 24px 32px 40px;
   min-height: 100%;
 }
 
-.emulators-section-title {
-  font-size: 15px;
-  font-weight: 600;
-  color: var(--text-secondary);
-  letter-spacing: 1px;
-  text-transform: uppercase;
-  margin-bottom: 14px;
-}
-
-/* Horizontal row of emulator cards */
-.emulators-row {
-  display: flex;
-  gap: 14px;
-  overflow-x: auto;
-  overflow-y: hidden;
-  padding-bottom: 10px;
-  scroll-snap-type: x mandatory;
+.emu-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 20px;
+  margin-top: 24px;
 }
 
 .emu-card {
-  flex-shrink: 0;
-  width: 100px;
-  text-align: center;
-  cursor: pointer;
-  transition: all var(--transition-normal);
-  scroll-snap-align: start;
-}
-
-.emu-card-icon {
-  width: 100px;
-  height: 100px;
-  border-radius: var(--radius-md);
-  overflow: hidden;
   background: var(--bg-surface);
-  border: 2px solid transparent;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: all var(--transition-normal);
-}
-
-.emu-card:hover .emu-card-icon,
-.emu-card:focus-visible .emu-card-icon {
-  border-color: var(--accent-primary);
-  box-shadow: var(--focus-glow);
-  transform: scale(1.05);
-}
-
-.emu-card:focus-visible {
-  outline: none;
-}
-
-.emu-card-icon img {
-  width: 60%;
-  height: 60%;
-  object-fit: contain;
-}
-
-.emu-card-icon-placeholder {
-  font-size: 36px;
-  color: var(--text-muted);
-}
-
-.emu-card-name {
-  margin-top: 6px;
-  font-size: 12px;
-  font-weight: 500;
-  color: var(--text-secondary);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-/* Add emulator card */
-.emu-card-add {
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  padding: 20px;
   display: flex;
   flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  width: 100px;
-  height: 100px;
-  border: 2px dashed var(--border-default);
-  border-radius: var(--radius-md);
-  color: var(--text-muted);
+  gap: 16px;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  outline: none;
   cursor: pointer;
-  transition: all var(--transition-fast);
-  background: transparent;
-  font-size: 12px;
+  position: relative;
 }
 
-.emu-card-add:hover,
-.emu-card-add:focus-visible {
+.emu-card:hover,
+.emu-card:focus,
+.emu-card.focused {
+  border-color: var(--accent-primary);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.2), 0 0 0 1px var(--accent-glow);
+  transform: translateY(-2px);
+  background: var(--bg-surface-hover);
+}
+
+.emu-header {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+}
+
+.emu-icon {
+  width: 56px;
+  height: 56px;
+  border-radius: var(--radius-md);
+  background: var(--bg-primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 24px;
+  box-shadow: var(--shadow-sm);
+  overflow: hidden;
+}
+
+.emu-icon img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.emu-title-group {
+  flex: 1;
+  min-width: 0;
+}
+
+.emu-name {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text-accent);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.emu-platform {
+  font-size: 13px;
+  color: var(--text-secondary);
+  margin-top: 2px;
+}
+
+.emu-meta {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  padding: 12px;
+  background: var(--bg-primary);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-subtle);
+}
+
+.emu-meta-item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.emu-meta-label {
+  font-size: 11px;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.emu-meta-val {
+  font-size: 13px;
+  color: var(--text-primary);
+  font-weight: 500;
+}
+
+.status-ok { color: var(--accent-success); }
+.status-err { color: var(--accent-danger); }
+
+.emu-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: auto;
+}
+
+.btn-open {
+  flex: 1;
+  padding: 8px 12px;
+  background: var(--accent-primary);
+  color: #fff;
+  border: none;
+  border-radius: var(--radius-md);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 6px;
+}
+.btn-open:hover { background: var(--accent-hover); }
+
+.btn-secondary {
+  padding: 8px 12px;
+  background: var(--bg-surface-hover);
+  color: var(--text-primary);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+.btn-secondary:hover { background: var(--bg-surface-active); }
+
+.btn-secondary.danger:hover {
+  background: rgba(239, 68, 68, 0.15);
+  border-color: rgba(239, 68, 68, 0.3);
+  color: var(--accent-danger);
+}
+
+.emu-card-add {
+  border: 2px dashed var(--border-default);
+  background: transparent;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-muted);
+  font-size: 15px;
+  font-weight: 500;
+  gap: 12px;
+}
+
+.emu-card-add:hover {
   border-color: var(--accent-primary);
   color: var(--accent-primary);
   background: var(--bg-surface);
 }
 
-.emu-card-add-icon {
-  font-size: 28px;
-  font-weight: 300;
-}
-
-/* Focus details panel for selected emulator */
-.emu-focus-panel {
-  margin-top: 24px;
-  padding: 24px;
-  background: var(--bg-surface);
-  border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-lg);
-  display: flex;
-  gap: 28px;
-  animation: fadeSlideUp 0.3s ease;
-}
-
-.emu-focus-left {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
-.emu-focus-header {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-}
-
-.emu-focus-header-icon {
-  width: 48px;
-  height: 48px;
-  border-radius: var(--radius-md);
-  background: var(--bg-surface-hover);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  overflow: hidden;
-}
-
-.emu-focus-header-icon img {
-  width: 100%;
-  height: 100%;
-  object-fit: contain;
-}
-
-.emu-focus-title {
-  font-size: 24px;
-  font-weight: 700;
-  color: var(--text-accent);
-}
-
-.emu-focus-platform {
-  font-size: 13px;
-  color: var(--text-muted);
-}
-
-.emu-focus-desc {
-  font-size: 13px;
-  color: var(--text-secondary);
-  line-height: 1.5;
-}
-
-.emu-focus-tags {
-  display: flex;
-  gap: 6px;
-  flex-wrap: wrap;
-}
-
-.emu-focus-tag {
-  padding: 3px 10px;
-  background: var(--bg-surface-hover);
-  border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-full);
-  font-size: 11px;
-  color: var(--text-secondary);
-}
-
-.emu-focus-actions {
-  display: flex;
-  gap: 10px;
-  margin-top: auto;
-}
-
-/* Right info panel */
-.emu-focus-right {
-  width: 260px;
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-.emu-info-row {
-  display: flex;
-  align-items: flex-start;
-  gap: 10px;
-  font-size: 13px;
-}
-
-.emu-info-icon {
-  flex-shrink: 0;
-  width: 18px;
-  height: 18px;
-  color: var(--text-muted);
-  margin-top: 1px;
-}
-
-.emu-info-label {
-  color: var(--text-muted);
-  font-size: 11px;
-}
-
-.emu-info-value {
-  color: var(--text-primary);
-  word-break: break-all;
-}
-
-/* Status badge */
-.emu-status {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 10px 14px;
-  background: var(--bg-surface-hover);
-  border-radius: var(--radius-md);
-  margin-top: auto;
-}
-
-.emu-status-dot {
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
-}
-
-.emu-status-dot.ready {
-  background: var(--accent-success);
-  box-shadow: 0 0 6px var(--accent-success);
-}
-
-.emu-status-dot.missing {
-  background: var(--accent-danger);
-  box-shadow: 0 0 6px var(--accent-danger);
-}
-
-.emu-status-text {
-  font-size: 12px;
-  color: var(--text-secondary);
-}
-
-/* Empty state */
-.emulators-empty {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 16px;
-  padding: 80px 20px;
-  text-align: center;
-}
-
-.emulators-empty-icon {
-  font-size: 48px;
-  opacity: 0.4;
-}
-
-.emulators-empty-title {
-  font-size: 20px;
-  font-weight: 600;
-  color: var(--text-primary);
-}
-
-.emulators-empty-sub {
-  font-size: 14px;
-  color: var(--text-muted);
-  max-width: 400px;
+.emu-add-icon {
+  font-size: 32px;
 }

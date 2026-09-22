@@ -1,144 +1,136 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
+import EmulatorEditor from '../../components/EmulatorEditor/EmulatorEditor';
 import './EmulatorsPage.css';
 
 export default function EmulatorsPage() {
   const [emulators, setEmulators] = useState([]);
-  const [focusedEmu, setFocusedEmu] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [isEditing, setIsEditing] = useState(false);
+  const [editingEmu, setEditingEmu] = useState(null);
 
-  useEffect(() => {
-    async function load() {
-      if (window.arcadiaAPI && window.arcadiaAPI.emulators) {
-        const res = await window.arcadiaAPI.emulators.getAll();
-        if (res.success) {
-          setEmulators(res.data);
-          if (res.data.length > 0) setFocusedEmu(res.data[0]);
-        }
-      }
+  const loadData = useCallback(async () => {
+    if (!window.arcadiaAPI) return;
+    const res = await window.arcadiaAPI.emulators.getAll();
+    if (res.success) {
+      setEmulators(res.data);
     }
-    load();
+    setLoading(false);
   }, []);
 
-  const handleKeyOnCard = (e) => {
-    if (e.key === 'ArrowRight') {
-      e.preventDefault();
-      const next = e.currentTarget.nextElementSibling;
-      if (next && next.focus) next.focus();
-    } else if (e.key === 'ArrowLeft') {
-      e.preventDefault();
-      const prev = e.currentTarget.previousElementSibling;
-      if (prev && prev.focus) prev.focus();
+  useEffect(() => { loadData(); }, [loadData]);
+
+  const handleOpen = async (e, emu) => {
+    e.stopPropagation();
+    if (!window.arcadiaAPI) return;
+    try {
+      const res = await window.arcadiaAPI.launcher.launchEmulator(emu.id);
+      if (!res.success) {
+        alert('Launch Error: ' + res.error);
+      }
+    } catch (err) {
+      alert('Launch Error: ' + err.message);
     }
   };
 
-  if (emulators.length === 0) {
-    return (
-      <div className="emulators-page">
-        <div className="emulators-empty">
-          <div className="emulators-empty-icon">🕹️</div>
-          <div className="emulators-empty-title">No emulators registered</div>
-          <div className="emulators-empty-sub">
-            Scan your emulator directories or add emulators manually to get started.
-          </div>
-        </div>
-      </div>
-    );
-  }
+  const handleEdit = (e, emu) => {
+    e.stopPropagation();
+    setEditingEmu(emu);
+    setIsEditing(true);
+  };
+
+  const handleAdd = () => {
+    setEditingEmu(null);
+    setIsEditing(true);
+  };
+
+  const handleRemove = async (e, emu) => {
+    e.stopPropagation();
+    if (!window.arcadiaAPI) return;
+    if (!confirm(`Unregister emulator "${emu.display_name}"?\n\nYour actual emulator files will NOT be deleted.`)) return;
+    
+    await window.arcadiaAPI.emulators.remove(emu.id);
+    loadData();
+  };
+
+  const handleSave = async (emuData) => {
+    if (!window.arcadiaAPI) return;
+    const res = await window.arcadiaAPI.emulators.upsert(emuData);
+    if (res.success) {
+      setIsEditing(false);
+      loadData();
+    } else {
+      alert('Failed to save emulator: ' + res.error);
+    }
+  };
+
+  if (loading) return null;
 
   return (
     <div className="emulators-page">
-      <h2 className="emulators-section-title">Emulators</h2>
-
-      {/* Horizontal row of emulator cards */}
-      <div className="emulators-row hide-scrollbar">
-        {emulators.map((emu) => (
-          <div
-            key={emu.id}
-            className="emu-card"
-            tabIndex={0}
-            onFocus={() => setFocusedEmu(emu)}
-            onMouseEnter={() => setFocusedEmu(emu)}
-            onKeyDown={handleKeyOnCard}
-            data-focusable="true"
-          >
-            <div className="emu-card-icon">
-              {emu.icon ? (
-                <img src={`file://${emu.icon}`} alt={emu.display_name} />
-              ) : (
-                <span className="emu-card-icon-placeholder">🎮</span>
-              )}
+      <h2 className="section-label">Your Emulators</h2>
+      
+      <div className="emu-grid">
+        {emulators.map(emu => {
+          const iconSrc = emu.icon_path ? `file://${emu.icon_path.replace(/\\/g, '/')}` : null;
+          // Simple validation assumption for display purposes (real validation happens on launch)
+          const isConfigured = Boolean(emu.executable);
+          
+          return (
+            <div key={emu.id} className="emu-card" tabIndex={0} onClick={(e) => handleEdit(e, emu)}>
+              <div className="emu-header">
+                <div className="emu-icon">
+                  {iconSrc ? <img src={iconSrc} alt="" draggable="false"/> : '⚙'}
+                </div>
+                <div className="emu-title-group">
+                  <div className="emu-name">{emu.display_name}</div>
+                  <div className="emu-platform">{emu.platform} {emu.is_default ? '(Default)' : ''}</div>
+                </div>
+              </div>
+              
+              <div className="emu-meta">
+                <div className="emu-meta-item">
+                  <span className="emu-meta-label">Version</span>
+                  <span className="emu-meta-val">{emu.version || 'Unknown'}</span>
+                </div>
+                <div className="emu-meta-item">
+                  <span className="emu-meta-label">Games</span>
+                  <span className="emu-meta-val">{emu.game_count || 0}</span>
+                </div>
+                <div className="emu-meta-item" style={{ gridColumn: 'span 2' }}>
+                  <span className="emu-meta-label">Executable</span>
+                  <span className={`emu-meta-val ${isConfigured ? 'status-ok' : 'status-err'}`}>
+                    {isConfigured ? 'Configured' : 'Missing Path'}
+                  </span>
+                </div>
+              </div>
+              
+              <div className="emu-actions">
+                <button className="btn-open" onClick={(e) => handleOpen(e, emu)} tabIndex={0}>
+                  ▶ Open
+                </button>
+                <button className="btn-secondary" onClick={(e) => handleEdit(e, emu)} tabIndex={0}>
+                  ✏ Edit
+                </button>
+                <button className="btn-secondary danger" onClick={(e) => handleRemove(e, emu)} tabIndex={0}>
+                  ✕ Remove
+                </button>
+              </div>
             </div>
-            <div className="emu-card-name">{emu.display_name}</div>
-          </div>
-        ))}
-        <div className="emu-card" style={{ flexShrink: 0 }}>
-          <button className="emu-card-add" tabIndex={0}>
-            <span className="emu-card-add-icon">+</span>
-            Add Emulator
-          </button>
-        </div>
+          );
+        })}
+
+        <button className="emu-card emu-card-add" onClick={handleAdd} tabIndex={0}>
+          <span className="emu-add-icon">+</span>
+          Add Emulator
+        </button>
       </div>
 
-      {/* Focus Details Panel */}
-      {focusedEmu && (
-        <div className="emu-focus-panel" key={focusedEmu.id}>
-          <div className="emu-focus-left">
-            <div className="emu-focus-header">
-              <div className="emu-focus-header-icon">
-                {focusedEmu.icon ? (
-                  <img src={`file://${focusedEmu.icon}`} alt="" />
-                ) : (
-                  <span style={{ fontSize: 28 }}>🎮</span>
-                )}
-              </div>
-              <div>
-                <div className="emu-focus-title">{focusedEmu.display_name}</div>
-                <div className="emu-focus-platform">{focusedEmu.platform}</div>
-              </div>
-            </div>
-
-            {focusedEmu.notes && (
-              <div className="emu-focus-desc">{focusedEmu.notes}</div>
-            )}
-
-            <div className="emu-focus-tags">
-              {focusedEmu.platform && <span className="emu-focus-tag">{focusedEmu.platform}</span>}
-            </div>
-
-            <div className="emu-focus-actions">
-              <button className="btn-play" tabIndex={0}>▶ Open Emulator</button>
-              <button className="btn-secondary" tabIndex={0}>⚙ Settings</button>
-              <button className="btn-secondary" tabIndex={0}>⋯</button>
-            </div>
-          </div>
-
-          <div className="emu-focus-right">
-            <div className="emu-info-row">
-              <div>
-                <div className="emu-info-label">Version</div>
-                <div className="emu-info-value">{focusedEmu.version || 'Unknown'}</div>
-              </div>
-            </div>
-            <div className="emu-info-row">
-              <div>
-                <div className="emu-info-label">Executable Path</div>
-                <div className="emu-info-value">{focusedEmu.executable}</div>
-              </div>
-            </div>
-            <div className="emu-info-row">
-              <div>
-                <div className="emu-info-label">Working Directory</div>
-                <div className="emu-info-value">{focusedEmu.working_directory || '—'}</div>
-              </div>
-            </div>
-
-            <div className="emu-status">
-              <div className={`emu-status-dot ${focusedEmu.executable ? 'ready' : 'missing'}`}></div>
-              <div className="emu-status-text">
-                {focusedEmu.executable ? 'Emulator is configured' : 'Executable not found'}
-              </div>
-            </div>
-          </div>
-        </div>
+      {isEditing && (
+        <EmulatorEditor 
+          emulator={editingEmu} 
+          onClose={() => setIsEditing(false)} 
+          onSave={handleSave} 
+        />
       )}
     </div>
   );

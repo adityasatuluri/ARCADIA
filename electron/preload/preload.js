@@ -6,7 +6,8 @@ contextBridge.exposeInMainWorld('arcadiaAPI', {
     showOpenDialog: (options) => ipcRenderer.invoke('system:show-open-dialog', options)
   },
   launcher: {
-    launch: (gameId) => ipcRenderer.invoke('launcher:launch', gameId)
+    launch: (gameId) => ipcRenderer.invoke('launcher:launch', gameId),
+    launchEmulator: (emuId) => ipcRenderer.invoke('launcher:launch-emulator', emuId)
   },
   games: {
     getAll: () => ipcRenderer.invoke('games:get-all'),

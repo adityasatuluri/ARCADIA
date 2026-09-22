@@ -24,6 +24,15 @@ function registerIpcHandlers() {
     }
   });
 
+  ipcMain.handle('launcher:launch-emulator', async (event, emuId) => {
+    try {
+      const result = await launcherService.launchEmulator(emuId);
+      return result;
+    } catch (e) {
+      return { success: false, error: e.message };
+    }
+  });
+
   /* ======== SCANNER ======== */
   ipcMain.handle('scanner:start', async (_, targetPath) => {
     return await scannerService.scanDirectory(targetPath);

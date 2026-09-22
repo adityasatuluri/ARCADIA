@@ -211,7 +211,12 @@ class DatabaseService {
 
   /* ============ EMULATORS ============ */
   getAllEmulators() {
-    return this._rows("SELECT * FROM emulators ORDER BY platform ASC, display_name ASC").map(r => this._fmtEmu(r));
+    const emus = this._rows("SELECT * FROM emulators ORDER BY platform ASC, display_name ASC").map(r => this._fmtEmu(r));
+    const counts = this._rows("SELECT emulator_id, COUNT(id) as cnt FROM games GROUP BY emulator_id");
+    const countMap = {};
+    for (const row of counts) countMap[row.emulator_id] = row.cnt;
+    for (const e of emus) e.game_count = countMap[e.id] || 0;
+    return emus;
   }
 
   getEmulatorById(id) {
