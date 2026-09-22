@@ -1,8 +1,28 @@
-const { ipcMain } = require('electron');
+const { ipcMain, dialog } = require('electron');
 const dbService = require('../database/index.js');
 const scannerService = require('../scanner/index.js');
+const launcherService = require('../launcher/index.js');
 
 function registerIpcHandlers() {
+
+  /* ======== SYSTEM ======== */
+  ipcMain.handle('system:ping', () => 'pong-from-main');
+  
+  ipcMain.handle('system:show-open-dialog', async (event, options) => {
+    const { canceled, filePaths } = await dialog.showOpenDialog(options);
+    if (canceled || filePaths.length === 0) return null;
+    return filePaths[0];
+  });
+
+  /* ======== LAUNCHER ======== */
+  ipcMain.handle('launcher:launch', async (event, gameId) => {
+    try {
+      const result = await launcherService.launch(gameId);
+      return result;
+    } catch (e) {
+      return { success: false, error: e.message };
+    }
+  });
 
   /* ======== SCANNER ======== */
   ipcMain.handle('scanner:start', async (_, targetPath) => {
@@ -90,9 +110,6 @@ function registerIpcHandlers() {
     try { dbService.setSetting(key, value); return { success: true }; }
     catch (e) { return { success: false, error: e.message }; }
   });
-
-  /* ======== SYSTEM ======== */
-  ipcMain.handle('system:ping', () => 'pong-from-main');
 }
 
 module.exports = { registerIpcHandlers };

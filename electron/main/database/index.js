@@ -56,6 +56,9 @@ class DatabaseService {
         type TEXT NOT NULL DEFAULT 'emulator',
         platform TEXT NOT NULL DEFAULT 'Unknown',
         game_path TEXT,
+        executable TEXT DEFAULT '',
+        arguments TEXT DEFAULT '',
+        working_directory TEXT DEFAULT '',
         icon_path TEXT,
         description TEXT DEFAULT '',
         year INTEGER,
@@ -97,6 +100,11 @@ class DatabaseService {
         value_json TEXT NOT NULL
       );
     `);
+
+    // Ensure new columns exist on older databases
+    try { this.db.run("ALTER TABLE games ADD COLUMN executable TEXT DEFAULT ''"); } catch {}
+    try { this.db.run("ALTER TABLE games ADD COLUMN arguments TEXT DEFAULT ''"); } catch {}
+    try { this.db.run("ALTER TABLE games ADD COLUMN working_directory TEXT DEFAULT ''"); } catch {}
   }
 
   /* ============ HELPER ============ */
@@ -135,11 +143,13 @@ class DatabaseService {
 
     if (existing) {
       this.db.run(`UPDATE games SET name=?, display_name=?, type=?, platform=?, game_path=?,
+        executable=?, arguments=?, working_directory=?,
         icon_path=?, description=?, year=?, genre=?, developer=?, publisher=?, tags=?,
         favorite=?, notes=?, emulator_id=?, save_path=?, source_dir=?, updated_at=?
         WHERE id=?`, [
         g.name || g.id, g.display_name || g.name || 'Untitled',
         g.type || 'emulator', g.platform || 'Unknown', g.game_path || '',
+        g.executable || '', g.arguments || '', g.working_directory || '',
         g.icon_path || '', g.description || '', g.year || null,
         genre, g.developer || '', g.publisher || '', tags,
         g.favorite ? 1 : 0, g.notes || '', g.emulator_id || '',
@@ -147,11 +157,13 @@ class DatabaseService {
       ]);
     } else {
       this.db.run(`INSERT INTO games (id, name, display_name, type, platform, game_path,
+        executable, arguments, working_directory,
         icon_path, description, year, genre, developer, publisher, tags,
         favorite, notes, emulator_id, save_path, source_dir, last_played, play_count, created_at, updated_at)
-        VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`, [
+        VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`, [
         g.id, g.name || g.id, g.display_name || g.name || 'Untitled',
         g.type || 'emulator', g.platform || 'Unknown', g.game_path || '',
+        g.executable || '', g.arguments || '', g.working_directory || '',
         g.icon_path || '', g.description || '', g.year || null,
         genre, g.developer || '', g.publisher || '', tags,
         g.favorite ? 1 : 0, g.notes || '', g.emulator_id || '',

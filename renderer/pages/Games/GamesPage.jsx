@@ -1,25 +1,35 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
+import GameEditor from '../../components/GameEditor/GameEditor';
 import './GamesPage.css';
 
 export default function GamesPage() {
   const [games, setGames] = useState([]);
+  const [emulators, setEmulators] = useState([]);
   const [focusedGame, setFocusedGame] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [isEditing, setIsEditing] = useState(false);
+  const [editingGame, setEditingGame] = useState(null);
   const rowRef = useRef(null);
 
-  const loadGames = useCallback(async () => {
+  const loadData = useCallback(async () => {
     if (!window.arcadiaAPI) return;
+    
+    // Load Emulators
+    const emuRes = await window.arcadiaAPI.emulators.getAll();
+    if (emuRes.success) setEmulators(emuRes.data);
+
+    // Load Games
     const res = await window.arcadiaAPI.games.getAll();
     if (res.success) {
       setGames(res.data);
-      if (res.data.length > 0 && !focusedGame) {
-        setFocusedGame(res.data[0]);
+      if (res.data.length > 0) {
+        setFocusedGame(prev => prev ? res.data.find(g => g.id === prev.id) || res.data[0] : res.data[0]);
       }
     }
     setLoading(false);
   }, []);
 
-  useEffect(() => { loadGames(); }, [loadGames]);
+  useEffect(() => { loadData(); }, [loadData]);
 
   // --- Derived lists ---
   const recentGames = games
@@ -30,13 +40,21 @@ export default function GamesPage() {
   const allGames = games;
 
   // --- Handlers ---
-  const handleTileClick = (game) => {
-    // Primary click = open/play action (wired but not launching a process yet)
-    console.log('[GamesPage] Tile clicked — launch wired for:', game.display_name);
-    if (window.arcadiaAPI) {
-      window.arcadiaAPI.games.recordLaunch(game.id);
+  const handleTileClick = async (game) => {
+    console.log('[GamesPage] Launching:', game.display_name);
+    if (!window.arcadiaAPI) return;
+
+    try {
+      const res = await window.arcadiaAPI.launcher.launch(game.id);
+      if (!res.success) {
+        alert('Launch Error: ' + res.error);
+      }
+    } catch (e) {
+      alert('Launch Error: ' + e.message);
     }
-    // TODO: Stage 7+ will wire this to the real process launcher
+    
+    // Refresh to update play counts/recent games list
+    loadData();
   };
 
   const handleTileFocus = (game) => {
@@ -47,18 +65,38 @@ export default function GamesPage() {
     if (!focusedGame || !window.arcadiaAPI) return;
     const res = await window.arcadiaAPI.games.toggleFavorite(focusedGame.id);
     if (res.success) {
-      setFocusedGame(res.data);
-      loadGames();
+      loadData();
     }
   };
 
   const handleRemove = async () => {
     if (!focusedGame || !window.arcadiaAPI) return;
-    // Safety: confirm before removing
     if (!confirm(`Remove "${focusedGame.display_name}" from library?\n\nThis only removes it from Arcadia — your game files are NOT deleted.`)) return;
     await window.arcadiaAPI.games.remove(focusedGame.id);
     setFocusedGame(null);
-    loadGames();
+    loadData();
+  };
+
+  const handleEdit = () => {
+    setEditingGame(focusedGame);
+    setIsEditing(true);
+  };
+
+  const handleAdd = () => {
+    setEditingGame(null);
+    setIsEditing(true);
+  };
+
+  const handleSaveGame = async (gameData) => {
+    if (!window.arcadiaAPI) return;
+    const res = await window.arcadiaAPI.games.upsert(gameData);
+    if (res.success) {
+      setIsEditing(false);
+      loadData();
+      setFocusedGame(res.data);
+    } else {
+      alert('Failed to save game: ' + res.error);
+    }
   };
 
   const handleKeyOnTile = (e, game) => {
@@ -137,7 +175,7 @@ export default function GamesPage() {
       <h2 className="section-label">All Games</h2>
       <div className="tile-row hide-scrollbar" ref={rowRef}>
         {allGames.map(renderTile)}
-        <button className="tile-add" tabIndex={0}>
+        <button className="tile-add" tabIndex={0} onClick={handleAdd}>
           <span className="tile-add-icon">+</span>
           Add Game
         </button>
@@ -182,7 +220,7 @@ export default function GamesPage() {
               </div>
               <div className="focus-meta-item">
                 <div className="focus-meta-label">Emulator</div>
-                <div className="focus-meta-value">{focusedGame.emulator_id || '—'}</div>
+                <div className="focus-meta-value">{focusedGame.type === 'pc' ? 'N/A' : (focusedGame.emulator_id || '—')}</div>
               </div>
               <div className="focus-meta-item">
                 <div className="focus-meta-label">Save Path</div>
@@ -203,7 +241,7 @@ export default function GamesPage() {
               <button className="btn-action" tabIndex={0} onClick={handleToggleFav}>
                 {focusedGame.favorite ? '★ Unfavorite' : '☆ Favorite'}
               </button>
-              <button className="btn-action" tabIndex={0}>
+              <button className="btn-action" tabIndex={0} onClick={handleEdit}>
                 ✏ Edit
               </button>
               <button className="btn-action danger" tabIndex={0} onClick={handleRemove}>
@@ -212,6 +250,15 @@ export default function GamesPage() {
             </div>
           </div>
         </div>
+      )}
+
+      {isEditing && (
+        <GameEditor 
+          game={editingGame} 
+          emulators={emulators} 
+          onClose={() => setIsEditing(false)} 
+          onSave={handleSaveGame} 
+        />
       )}
     </div>
   );

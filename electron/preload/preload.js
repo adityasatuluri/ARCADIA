@@ -2,7 +2,11 @@ const { contextBridge, ipcRenderer } = require('electron');
 
 contextBridge.exposeInMainWorld('arcadiaAPI', {
   system: {
-    ping: () => ipcRenderer.invoke('system:ping')
+    ping: () => ipcRenderer.invoke('system:ping'),
+    showOpenDialog: (options) => ipcRenderer.invoke('system:show-open-dialog', options)
+  },
+  launcher: {
+    launch: (gameId) => ipcRenderer.invoke('launcher:launch', gameId)
   },
   games: {
     getAll: () => ipcRenderer.invoke('games:get-all'),
