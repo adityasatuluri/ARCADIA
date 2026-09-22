@@ -1,100 +1,155 @@
 /* ============================================================
-   ARCADIA — Settings Page
+   ARCADIA — Settings Page Master-Detail Layout
    ============================================================ */
 
 .settings-page {
-  padding: 24px 32px 40px;
-  min-height: 100%;
+  display: flex;
+  height: 100%;
 }
 
-.settings-header {
-  font-size: 28px;
-  font-weight: 700;
-  color: var(--text-accent);
-  margin-bottom: 24px;
+.settings-sidebar {
+  width: 280px;
+  background: rgba(0, 0, 0, 0.2);
+  border-right: 1px solid var(--border-subtle);
+  display: flex;
+  flex-direction: column;
+  padding: 32px 0;
+  overflow-y: auto;
+  flex-shrink: 0;
 }
 
-.section-label {
-  font-size: 14px;
-  font-weight: 600;
+.settings-categories {
+  display: flex;
+  flex-direction: column;
+}
+
+.settings-cat-btn {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 12px 24px;
+  background: transparent;
+  border: none;
   color: var(--text-secondary);
-  letter-spacing: 1.5px;
-  text-transform: uppercase;
-  margin-bottom: 14px;
-  margin-top: 28px;
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 500;
+  text-align: left;
+  cursor: pointer;
+  transition: all 0.2s;
+  border-left: 3px solid transparent;
+  outline: none;
 }
 
-/* ---- Library Locations ---- */
-.library-card {
+.settings-cat-icon {
+  font-size: 18px;
+  opacity: 0.8;
+}
+
+.settings-cat-btn:hover {
+  background: var(--bg-surface-hover);
+  color: var(--text-primary);
+}
+
+.settings-cat-btn:focus,
+.settings-cat-btn.active {
+  background: rgba(59, 130, 246, 0.1); /* fallback accent */
+  background: var(--bg-surface-active);
+  color: var(--text-accent);
+  border-left-color: var(--accent-primary);
+}
+
+.settings-content {
+  flex: 1;
+  padding: 40px 64px;
+  overflow-y: auto;
+}
+
+.settings-panel {
+  max-width: 800px;
+  animation: fadeIn 0.3s ease-out forwards;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.settings-panel h2 {
+  font-size: 28px;
+  font-weight: 600;
+  margin-bottom: 24px;
+  color: var(--text-accent);
+  letter-spacing: 0.5px;
+}
+
+.settings-group {
+  display: flex;
+  flex-direction: column;
   background: var(--bg-surface);
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-lg);
   padding: 24px;
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
 }
 
-.library-card-desc {
-  font-size: 13px;
-  color: var(--text-secondary);
-  line-height: 1.5;
+.settings-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 0;
+  border-bottom: 1px solid var(--border-subtle);
+  color: var(--text-primary);
+  font-size: 15px;
+  outline: none;
+  transition: all 0.2s;
+  cursor: pointer;
 }
 
-.library-paths-list {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
+.settings-row:hover,
+.settings-row:focus-within,
+.settings-row:focus {
+  background: var(--bg-surface-hover);
+  border-radius: 8px;
+  padding-left: 12px;
+  padding-right: 12px;
+  margin-left: -12px;
+  margin-right: -12px;
+  border-bottom-color: transparent;
+}
+
+.settings-row:last-child {
+  border-bottom: none;
+}
+
+.settings-row select,
+.settings-row input[type="text"],
+.settings-row input[type="password"] {
   background: var(--bg-primary);
   border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-md);
-  padding: 12px;
-  max-height: 200px;
-  overflow-y: auto;
-}
-
-.library-path-empty {
-  font-size: 13px;
-  color: var(--text-muted);
-  text-align: center;
-  padding: 12px;
-}
-
-.library-path-item {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 8px 12px;
-  background: var(--bg-surface);
-  border-radius: var(--radius-sm);
-  border: 1px solid var(--border-default);
-}
-
-.library-path-text {
-  font-size: 13px;
   color: var(--text-primary);
-  font-family: monospace;
-}
-
-.library-path-remove {
-  background: transparent;
-  border: none;
-  color: var(--text-muted);
-  cursor: pointer;
+  padding: 8px 12px;
+  border-radius: var(--radius-sm);
+  font-family: inherit;
   font-size: 14px;
-  transition: color 0.2s;
-  padding: 4px;
-}
-.library-path-remove:hover { color: var(--accent-danger); }
-
-.library-actions {
-  display: flex;
-  align-items: center;
-  margin-top: 8px;
+  outline: none;
 }
 
+.settings-row select:focus,
+.settings-row input:focus {
+  border-color: var(--accent-primary);
+  box-shadow: 0 0 0 2px var(--accent-glow);
+}
+
+.settings-row input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--accent-primary);
+  cursor: pointer;
+}
+
+/* Existing Button Styles ported */
 .btn-primary {
-  padding: 10px 20px;
+  padding: 8px 16px;
   background: var(--accent-primary);
   color: #fff;
   border: none;
@@ -108,7 +163,7 @@
 .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
 
 .btn-secondary {
-  padding: 10px 20px;
+  padding: 8px 16px;
   background: var(--bg-surface-hover);
   color: var(--text-primary);
   border: 1px solid var(--border-subtle);
@@ -125,93 +180,25 @@
   color: var(--accent-danger);
 }
 
-.scanner-progress-box {
-  margin-top: 8px;
-  padding: 16px;
-  background: var(--bg-primary);
-  border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-md);
+/* Progress stuff */
+.library-paths-list {
   display: flex;
   flex-direction: column;
   gap: 8px;
-}
-
-.scanner-status-text {
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--text-accent);
-}
-
-.scanner-stats {
-  font-size: 12px;
-  color: var(--text-secondary);
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.scanner-counters {
-  display: flex;
-  gap: 16px;
-  color: var(--text-primary);
-  font-weight: 500;
-}
-
-/* ---- Categories Grid ---- */
-.settings-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-  gap: 16px;
-}
-
-.settings-card {
-  display: flex;
-  align-items: flex-start;
-  gap: 16px;
-  padding: 20px;
-  background: var(--bg-surface);
+  background: var(--bg-primary);
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-md);
-  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-  outline: none;
-  cursor: pointer;
+  padding: 12px;
+  max-height: 200px;
+  overflow-y: auto;
 }
 
-.settings-card:hover,
-.settings-card:focus {
-  border-color: var(--accent-primary);
-  background: var(--bg-surface-hover);
-  transform: translateY(-2px);
-  box-shadow: var(--shadow-md);
-}
-
-.settings-card-icon {
-  font-size: 28px;
+.library-path-item {
   display: flex;
   align-items: center;
-  justify-content: center;
-  width: 48px;
-  height: 48px;
-  background: var(--bg-primary);
-  border-radius: var(--radius-md);
-  box-shadow: var(--shadow-sm);
-}
-
-.settings-card-text {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.settings-card-title {
-  font-size: 15px;
-  font-weight: 600;
-  color: var(--text-primary);
-}
-
-.settings-card-sub {
-  font-size: 13px;
-  color: var(--text-muted);
-  line-height: 1.4;
+  justify-content: space-between;
+  padding: 8px 12px;
+  background: var(--bg-surface);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-default);
 }

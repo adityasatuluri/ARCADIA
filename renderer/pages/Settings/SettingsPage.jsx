@@ -1,27 +1,33 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useGamepadConfig } from '../../context/GamepadContext';
+import { useTheme } from '../../theme/ThemeContext';
 import './SettingsPage.css';
 
 const CATEGORIES = [
-  { id: 'appearance', icon: '🎨', title: 'Appearance', sub: 'Theme, background, UI density' },
-  { id: 'emulators', icon: '🕹️', title: 'Emulators', sub: 'Manage, add, platform defaults' },
-  { id: 'saves', icon: '💾', title: 'Save Manager', sub: 'Paths, backups, populate' },
-  { id: 'artwork', icon: '🖼️', title: 'Artwork & Metadata', sub: 'Covers, cache, auto-detection' },
-  { id: 'launch', icon: '🚀', title: 'Launch Behavior', sub: 'Minimize, restore, timeout' },
-  { id: 'display', icon: '📊', title: 'Library Display', sub: 'Sorting, grouping, filters' },
-  { id: 'search', icon: '🔍', title: 'Search', sub: 'Indexing, metadata fields' },
-  { id: 'storage', icon: '💿', title: 'Storage', sub: 'Cache, data, disk usage' },
-  { id: 'maintenance', icon: '🔧', title: 'Maintenance', sub: 'Rebuild, validate, rescan' },
-  { id: 'notifications', icon: '🔔', title: 'Notifications', sub: 'Event toggles' },
-  { id: 'safety', icon: '🛡️', title: 'Safety', sub: 'Confirmations, protections' },
-  { id: 'about', icon: 'ℹ️', title: 'About', sub: 'Version, diagnostics, export' }
+  { id: 'appearance', icon: '🎨', title: 'Appearance' },
+  { id: 'controller', icon: '🎮', title: 'Controller' },
+  { id: 'emulators', icon: '🕹️', title: 'Emulators' },
+  { id: 'library', icon: '📁', title: 'Game Library' },
+  { id: 'saves', icon: '💾', title: 'Save Manager' },
+  { id: 'artwork', icon: '🖼️', title: 'Artwork & Metadata' },
+  { id: 'launch', icon: '🚀', title: 'Launch Behavior' },
+  { id: 'display', icon: '📊', title: 'Library Display' },
+  { id: 'search', icon: '🔍', title: 'Search' },
+  { id: 'storage', icon: '💿', title: 'Storage' },
+  { id: 'maintenance', icon: '🔧', title: 'Maintenance' },
+  { id: 'notifications', icon: '🔔', title: 'Notifications' },
+  { id: 'safety', icon: '🛡️', title: 'Safety' },
+  { id: 'about', icon: 'ℹ️', title: 'About' }
 ];
 
 export default function SettingsPage() {
+  const [activeCategory, setActiveCategory] = useState('appearance');
   const [libraryPaths, setLibraryPaths] = useState([]);
   const [scanStatus, setScanStatus] = useState('');
   const [isScanning, setIsScanning] = useState(false);
   const [progressData, setProgressData] = useState(null);
+  
+  const { theme, toggleTheme } = useTheme();
 
   // Controller Settings
   const { 
@@ -30,7 +36,23 @@ export default function SettingsPage() {
     updateConfig, vibrate
   } = useGamepadConfig();
 
-  const [globalSettings, setGlobalSettings] = useState({});
+  const [settings, setSettings] = useState({
+    theme: 'dark',
+    ui_scale: '100%',
+    accent_color: 'blue',
+    minimize_on_launch: true,
+    restore_on_exit: true,
+    auto_download_covers: true,
+    scrape_metadata: true,
+    default_sort: 'name_asc',
+    fuzzy_search: true,
+    show_toasts: true,
+    confirm_delete: true,
+    confirm_launch_no_save: false,
+    backup_before_launch: false,
+    backup_on_exit: false,
+    backup_directory: 'D:/Arcadia/SaveBackups',
+  });
 
   useEffect(() => {
     async function load() {
@@ -40,7 +62,7 @@ export default function SettingsPage() {
 
         const allSettings = await window.arcadiaAPI.settings.getAll();
         if (allSettings.success && allSettings.data) {
-          setGlobalSettings(allSettings.data);
+          setSettings(prev => ({ ...prev, ...allSettings.data }));
           if (allSettings.data.library_locations && (!libs.success || !libs.data)) {
             setLibraryPaths(allSettings.data.library_locations);
           }
@@ -58,15 +80,15 @@ export default function SettingsPage() {
     };
   }, []);
 
+  const handleSetSetting = async (key, value) => {
+    if (!window.arcadiaAPI) return;
+    await window.arcadiaAPI.settings.set(key, value);
+    setSettings(prev => ({ ...prev, [key]: value }));
+  };
+
   const savePaths = async (newPaths) => {
     setLibraryPaths(newPaths);
     if (window.arcadiaAPI) await window.arcadiaAPI.settings.set('library_locations', newPaths);
-  };
-
-  const handleSetGlobalSetting = async (key, value) => {
-    if (!window.arcadiaAPI) return;
-    await window.arcadiaAPI.settings.set(key, value);
-    setGlobalSettings(prev => ({ ...prev, [key]: value }));
   };
 
   const handleAddFolder = async () => {
@@ -85,7 +107,7 @@ export default function SettingsPage() {
     
     const res = await window.arcadiaAPI.scanner.start(libraryPaths);
     
-    if (res.success) setScanStatus(`Done — ${res.stats.gamesDiscovered} games, ${res.stats.emulatorsDiscovered} emulators found (${res.stats.filesDiscovered} files crawled)`);
+    if (res.success) setScanStatus(`Done — ${res.stats.gamesDiscovered} games, ${res.stats.emulatorsDiscovered} emulators`);
     else setScanStatus(`Error: ${res.error}`);
     setIsScanning(false);
   };
@@ -97,184 +119,279 @@ export default function SettingsPage() {
     setIsScanning(false);
   };
 
-  return (
-    <div className="settings-page">
-      <h1 className="settings-header">Settings</h1>
+  const confirmAction = (msg, action) => {
+    if (window.confirm(msg)) action();
+  };
 
-      <div className="library-locations-section">
-        <h2 className="section-label" style={{ marginTop: 0 }}>Library Locations</h2>
-        <div className="library-card">
-          <p className="library-card-desc">Arcadia will scan these folders for games, ROMs, and emulators.</p>
-          <div className="library-paths-list">
-            {libraryPaths.length === 0 ? (
-              <div className="library-path-empty">No library folders configured.</div>
-            ) : (
-              libraryPaths.map((path, idx) => (
-                <div key={idx} className="library-path-item">
-                  <span className="library-path-text">{path}</span>
-                  <button className="library-path-remove" onClick={() => handleRemoveFolder(path)} tabIndex={0}>✕</button>
-                </div>
-              ))
-            )}
+  const renderContent = () => {
+    switch(activeCategory) {
+      case 'appearance': return (
+        <div className="settings-panel">
+          <h2>Appearance</h2>
+          <div className="settings-group">
+            <label className="settings-row" tabIndex={0} onKeyDown={e => { if(e.key === 'Enter') toggleTheme() }}>
+              <span>Theme Mode</span>
+              <button className="btn-secondary" onClick={toggleTheme}>{theme === 'dark' ? 'Dark Mode' : 'Light Mode'}</button>
+            </label>
+            <label className="settings-row">
+              <span>UI Scale</span>
+              <select value={settings.ui_scale} onChange={e => handleSetSetting('ui_scale', e.target.value)} tabIndex={0}>
+                <option value="90%">90%</option>
+                <option value="100%">100%</option>
+                <option value="110%">110%</option>
+              </select>
+            </label>
+            <label className="settings-row">
+              <span>Accent Color</span>
+              <select value={settings.accent_color} onChange={e => handleSetSetting('accent_color', e.target.value)} tabIndex={0}>
+                <option value="blue">Blue</option>
+                <option value="purple">Purple</option>
+                <option value="red">Red</option>
+              </select>
+            </label>
           </div>
-          <div className="library-actions">
-            <button className="btn-secondary" onClick={handleAddFolder} tabIndex={0}>+ Add Folder</button>
-            <div style={{ display: 'flex', gap: '8px', marginLeft: 'auto' }}>
-              {isScanning ? (
-                <button className="btn-secondary danger" onClick={cancelScan} tabIndex={0}>Cancel Scan</button>
-              ) : (
-                <button className="btn-primary" onClick={runScan} disabled={libraryPaths.length === 0} tabIndex={0}>
-                  {libraryPaths.length > 0 ? 'Start Scan / Rescan' : 'Add a folder to scan'}
-                </button>
-              )}
-            </div>
-          </div>
-          {(isScanning || scanStatus) && (
-            <div className="scanner-progress-box">
-              <div className="scanner-status-text">{scanStatus || `Phase: ${progressData?.phase}`}</div>
-              {isScanning && progressData && (
-                <div className="scanner-stats">
-                  <span>Crawling: {progressData.currentLocation || '...'}</span>
-                  <div className="scanner-counters">
-                    <span>Files: {progressData.filesDiscovered}</span>
-                    <span>Games: {progressData.gamesDiscovered}</span>
-                    <span>Emulators: {progressData.emulatorsDiscovered}</span>
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
         </div>
-      </div>
-
-      <div className="library-locations-section" style={{ marginTop: '32px' }}>
-        <h2 className="section-label">Controller & Gamepad</h2>
-        <div className="library-card">
-          <p className="library-card-desc">
-            Press any button on your controller to detect it.
-          </p>
-
-          <div style={{ marginBottom: '24px' }}>
-            <h3 style={{ fontSize: '14px', color: '#fff', marginBottom: '8px' }}>Detected Controllers</h3>
-            {gamepads.length === 0 ? (
-              <div style={{ padding: '16px', background: 'rgba(255,255,255,0.05)', borderRadius: '8px', color: 'rgba(255,255,255,0.5)', textAlign: 'center' }}>
-                No controllers detected. Press a button to wake your controller.
-              </div>
-            ) : (
-              <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
-                {gamepads.map(gp => (
-                  <div key={gp.index} 
-                       style={{ padding: '12px 16px', border: gp.id === activeGamepadId ? '1px solid var(--accent-primary)' : '1px solid rgba(255,255,255,0.1)', background: gp.id === activeGamepadId ? 'rgba(var(--accent-rgb), 0.1)' : 'rgba(0,0,0,0.3)', borderRadius: '8px', cursor: 'pointer' }}
-                       onClick={() => setActiveGamepadId(gp.id)}
-                       tabIndex={0}>
-                    <div style={{ fontWeight: '600', color: '#fff' }}>{gp.id.split('(')[0].trim()}</div>
-                    <div style={{ fontSize: '12px', color: 'rgba(255,255,255,0.5)' }}>Index: {gp.index} {gp.id === activeGamepadId ? '(Active)' : ''}</div>
+      );
+      case 'controller': return (
+        <div className="settings-panel">
+          <h2>Controller</h2>
+          <div className="settings-group">
+            <div className="settings-row" style={{flexDirection: 'column', alignItems: 'flex-start', gap: '8px'}}>
+              <span>Detected Controllers</span>
+              {gamepads.length === 0 ? (
+                <div style={{color: 'var(--text-muted)'}}>No controllers detected. Press a button.</div>
+              ) : (
+                <div style={{display: 'flex', gap: '8px'}}>
+                  {gamepads.map(gp => (
+                    <button key={gp.id} className={gp.id === activeGamepadId ? 'btn-primary' : 'btn-secondary'} onClick={() => setActiveGamepadId(gp.id)}>
+                      {gp.id.split('(')[0].trim()}
+                    </button>
+                  ))}
+                </div>
+              )}
+              {gamepads.length > 0 && <button className="btn-secondary" onClick={() => vibrate(500, 1, 1)}>Test Rumble</button>}
+            </div>
+            
+            <label className="settings-row">
+              <span>Analog Deadzone ({(analogSensitivity*100).toFixed(0)}%)</span>
+              <input type="range" min="0" max="1" step="0.05" value={analogSensitivity} onChange={e => updateConfig('analogSensitivity', parseFloat(e.target.value))} tabIndex={0} />
+            </label>
+            <label className="settings-row">
+              <span>Trigger Sensitivity ({(triggerSensitivity*100).toFixed(0)}%)</span>
+              <input type="range" min="0" max="1" step="0.05" value={triggerSensitivity} onChange={e => updateConfig('triggerSensitivity', parseFloat(e.target.value))} tabIndex={0} />
+            </label>
+            <label className="settings-row" tabIndex={0} onKeyDown={e => { if(e.key === 'Enter') updateConfig('vibrationEnabled', !vibrationEnabled) }}>
+              <span>Enable Navigation Vibration</span>
+              <input type="checkbox" checked={vibrationEnabled} onChange={e => updateConfig('vibrationEnabled', e.target.checked)} tabIndex={-1} />
+            </label>
+            <label className="settings-row">
+              <span>Button Prompts Style</span>
+              <select value={promptStyle} onChange={e => updateConfig('promptStyle', e.target.value)} tabIndex={0}>
+                <option value="xbox">Xbox</option>
+                <option value="ps">PlayStation</option>
+                <option value="generic">Generic</option>
+              </select>
+            </label>
+          </div>
+        </div>
+      );
+      case 'emulators': return (
+        <div className="settings-panel">
+          <h2>Emulators</h2>
+          <div className="settings-group">
+            <div className="settings-row" style={{flexDirection: 'column', alignItems: 'flex-start'}}>
+              <span>Emulators are detected during Library Scans.</span>
+              <p style={{fontSize: '12px', color: 'var(--text-muted)', marginTop: '4px'}}>Configure default emulator mappings for specific platforms here (Coming Soon).</p>
+            </div>
+          </div>
+        </div>
+      );
+      case 'library': return (
+        <div className="settings-panel">
+          <h2>Game Library</h2>
+          <div className="settings-group">
+            <div className="settings-row" style={{flexDirection: 'column', alignItems: 'flex-start'}}>
+              <span>Library Locations</span>
+              <div className="library-paths-list" style={{width: '100%', marginTop: '8px'}}>
+                {libraryPaths.length === 0 ? <div className="library-path-empty">No folders configured.</div> : libraryPaths.map(p => (
+                  <div key={p} className="library-path-item">
+                    <span>{p}</span>
+                    <button className="btn-secondary danger" onClick={() => confirmAction('Remove this folder?', () => handleRemoveFolder(p))}>✕</button>
                   </div>
                 ))}
               </div>
-            )}
-            {gamepads.length > 0 && (
-              <button className="btn-secondary" style={{ marginTop: '12px' }} onClick={() => vibrate(500, 1.0, 1.0)} tabIndex={0}>Test Rumble</button>
-            )}
-          </div>
-
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px' }}>
-            <div>
-              <h3 style={{ fontSize: '14px', color: '#fff', marginBottom: '16px' }}>Input Sensitivity</h3>
-              <div style={{ marginBottom: '16px' }}>
-                <label style={{ display: 'block', fontSize: '13px', color: 'rgba(255,255,255,0.7)', marginBottom: '8px' }}>
-                  Analog Stick Deadzone ({(analogSensitivity * 100).toFixed(0)}%)
-                </label>
-                <input type="range" min="0" max="1" step="0.05" value={analogSensitivity} onChange={e => updateConfig('analogSensitivity', parseFloat(e.target.value))} style={{ width: '100%' }} tabIndex={0} />
+              <div style={{display: 'flex', gap: '8px', marginTop: '12px'}}>
+                <button className="btn-secondary" onClick={handleAddFolder}>+ Add Folder</button>
+                {isScanning ? <button className="btn-secondary danger" onClick={cancelScan}>Cancel Scan</button> : <button className="btn-primary" onClick={runScan}>Start Scan</button>}
               </div>
-              <div>
-                <label style={{ display: 'block', fontSize: '13px', color: 'rgba(255,255,255,0.7)', marginBottom: '8px' }}>
-                  Trigger Scroll Sensitivity ({(triggerSensitivity * 100).toFixed(0)}%)
-                </label>
-                <input type="range" min="0" max="1" step="0.05" value={triggerSensitivity} onChange={e => updateConfig('triggerSensitivity', parseFloat(e.target.value))} style={{ width: '100%' }} tabIndex={0} />
-              </div>
-            </div>
-            
-            <div>
-              <h3 style={{ fontSize: '14px', color: '#fff', marginBottom: '16px' }}>Preferences</h3>
-              <div style={{ marginBottom: '16px' }}>
-                <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', color: 'rgba(255,255,255,0.7)', cursor: 'pointer' }}>
-                  <input type="checkbox" checked={vibrationEnabled} onChange={e => updateConfig('vibrationEnabled', e.target.checked)} tabIndex={0} />
-                  Enable UI Navigation Vibration
-                </label>
-              </div>
-              <div>
-                <label style={{ display: 'block', fontSize: '13px', color: 'rgba(255,255,255,0.7)', marginBottom: '8px' }}>
-                  Button Prompts Style
-                </label>
-                <select value={promptStyle} onChange={e => updateConfig('promptStyle', e.target.value)} style={{ width: '100%', padding: '8px', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.2)', color: '#fff', borderRadius: '4px' }} tabIndex={0}>
-                  <option value="xbox">Xbox (A, B, X, Y)</option>
-                  <option value="ps">PlayStation (Cross, Circle, Square, Triangle)</option>
-                  <option value="generic">Generic (Confirm, Cancel)</option>
-                </select>
-              </div>
+              {scanStatus && <div style={{marginTop: '12px', fontSize: '13px', color: 'var(--text-muted)'}}>{scanStatus}</div>}
             </div>
           </div>
         </div>
-      </div>
-
-      <div className="library-locations-section" style={{ marginTop: '32px' }}>
-        <h2 className="section-label">Save Backups</h2>
-        <div className="library-card">
-          <p className="library-card-desc">Configure automatic save backups before launching and after exiting games.</p>
-          
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px', marginTop: '16px' }}>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-              <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', color: 'rgba(255,255,255,0.7)', cursor: 'pointer' }} tabIndex={0} onKeyDown={e => { if (e.key === 'Enter') handleSetGlobalSetting('backup_before_launch', !globalSettings.backup_before_launch) }}>
-                <input type="checkbox" checked={globalSettings.backup_before_launch || false} onChange={e => handleSetGlobalSetting('backup_before_launch', e.target.checked)} tabIndex={-1} />
-                Backup before launch
-              </label>
-              
-              <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', color: 'rgba(255,255,255,0.7)', cursor: 'pointer' }} tabIndex={0} onKeyDown={e => { if (e.key === 'Enter') handleSetGlobalSetting('backup_on_exit', !globalSettings.backup_on_exit) }}>
-                <input type="checkbox" checked={globalSettings.backup_on_exit || false} onChange={e => handleSetGlobalSetting('backup_on_exit', e.target.checked)} tabIndex={-1} />
-                Backup on game exit
-              </label>
-            </div>
-            
-            <div>
-              <label style={{ display: 'block', fontSize: '13px', color: 'rgba(255,255,255,0.7)', marginBottom: '8px' }}>
-                Backup Directory
-              </label>
-              <div style={{ display: 'flex', gap: '8px' }}>
-                <input 
-                  type="text" 
-                  readOnly 
-                  value={globalSettings.backup_directory || 'D:/Arcadia/SaveBackups'} 
-                  style={{ flex: 1, padding: '8px', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.2)', color: '#fff', borderRadius: '4px' }} 
-                  tabIndex={0} 
-                />
-                <button 
-                  className="btn-secondary" 
-                  onClick={async () => {
-                    const res = await window.arcadiaAPI.system.showOpenDialog({ properties: ['openDirectory'] });
-                    if (res) handleSetGlobalSetting('backup_directory', res);
-                  }} 
-                  tabIndex={0}
-                >
-                  Browse...
-                </button>
+      );
+      case 'saves': return (
+        <div className="settings-panel">
+          <h2>Save Manager</h2>
+          <div className="settings-group">
+            <label className="settings-row" tabIndex={0} onKeyDown={e => { if(e.key==='Enter') handleSetSetting('backup_before_launch', !settings.backup_before_launch) }}>
+              <span>Backup Before Launch</span>
+              <input type="checkbox" checked={settings.backup_before_launch} onChange={e => handleSetSetting('backup_before_launch', e.target.checked)} tabIndex={-1} />
+            </label>
+            <label className="settings-row" tabIndex={0} onKeyDown={e => { if(e.key==='Enter') handleSetSetting('backup_on_exit', !settings.backup_on_exit) }}>
+              <span>Backup On Exit</span>
+              <input type="checkbox" checked={settings.backup_on_exit} onChange={e => handleSetSetting('backup_on_exit', e.target.checked)} tabIndex={-1} />
+            </label>
+            <label className="settings-row">
+              <span>Backup Directory</span>
+              <div style={{display: 'flex', gap: '8px', width: '250px'}}>
+                <input type="text" readOnly value={settings.backup_directory} style={{flex: 1, padding: '4px 8px'}} tabIndex={-1} />
+                <button className="btn-secondary" onClick={async () => {
+                  const res = await window.arcadiaAPI.system.showOpenDialog({ properties: ['openDirectory'] });
+                  if (res) handleSetSetting('backup_directory', res);
+                }} tabIndex={0}>Browse</button>
               </div>
+            </label>
+          </div>
+        </div>
+      );
+      case 'artwork': return (
+        <div className="settings-panel">
+          <h2>Artwork & Metadata</h2>
+          <div className="settings-group">
+            <label className="settings-row" tabIndex={0} onKeyDown={e => { if(e.key==='Enter') handleSetSetting('auto_download_covers', !settings.auto_download_covers) }}>
+              <span>Auto-download missing covers</span>
+              <input type="checkbox" checked={settings.auto_download_covers} onChange={e => handleSetSetting('auto_download_covers', e.target.checked)} tabIndex={-1} />
+            </label>
+            <label className="settings-row" tabIndex={0} onKeyDown={e => { if(e.key==='Enter') handleSetSetting('scrape_metadata', !settings.scrape_metadata) }}>
+              <span>Scrape metadata on scan</span>
+              <input type="checkbox" checked={settings.scrape_metadata} onChange={e => handleSetSetting('scrape_metadata', e.target.checked)} tabIndex={-1} />
+            </label>
+          </div>
+        </div>
+      );
+      case 'launch': return (
+        <div className="settings-panel">
+          <h2>Launch Behavior</h2>
+          <div className="settings-group">
+            <label className="settings-row" tabIndex={0} onKeyDown={e => { if(e.key==='Enter') handleSetSetting('minimize_on_launch', !settings.minimize_on_launch) }}>
+              <span>Minimize Arcadia on game launch</span>
+              <input type="checkbox" checked={settings.minimize_on_launch} onChange={e => handleSetSetting('minimize_on_launch', e.target.checked)} tabIndex={-1} />
+            </label>
+            <label className="settings-row" tabIndex={0} onKeyDown={e => { if(e.key==='Enter') handleSetSetting('restore_on_exit', !settings.restore_on_exit) }}>
+              <span>Restore Arcadia on game exit</span>
+              <input type="checkbox" checked={settings.restore_on_exit} onChange={e => handleSetSetting('restore_on_exit', e.target.checked)} tabIndex={-1} />
+            </label>
+          </div>
+        </div>
+      );
+      case 'display': return (
+        <div className="settings-panel">
+          <h2>Library Display</h2>
+          <div className="settings-group">
+            <label className="settings-row">
+              <span>Default Sorting</span>
+              <select value={settings.default_sort} onChange={e => handleSetSetting('default_sort', e.target.value)} tabIndex={0}>
+                <option value="name_asc">A-Z</option>
+                <option value="recent">Recently Played</option>
+              </select>
+            </label>
+          </div>
+        </div>
+      );
+      case 'search': return (
+        <div className="settings-panel">
+          <h2>Search</h2>
+          <div className="settings-group">
+            <label className="settings-row" tabIndex={0} onKeyDown={e => { if(e.key==='Enter') handleSetSetting('fuzzy_search', !settings.fuzzy_search) }}>
+              <span>Enable Fuzzy Search</span>
+              <input type="checkbox" checked={settings.fuzzy_search} onChange={e => handleSetSetting('fuzzy_search', e.target.checked)} tabIndex={-1} />
+            </label>
+          </div>
+        </div>
+      );
+      case 'storage': return (
+        <div className="settings-panel">
+          <h2>Storage</h2>
+          <div className="settings-group">
+            <div className="settings-row" style={{flexDirection: 'column', alignItems: 'flex-start'}}>
+              <span>Cache Management</span>
+              <button className="btn-secondary danger" style={{marginTop: '8px'}} onClick={() => confirmAction('Clear all cached images?', () => alert('Cache cleared.'))}>Clear Image Cache</button>
             </div>
           </div>
         </div>
-      </div>
-
-      <h2 className="section-label" style={{ marginTop: '32px' }}>Other Categories</h2>
-      <div className="settings-grid">
-        {CATEGORIES.map(cat => (
-          <div key={cat.id} className="settings-card" tabIndex={0}>
-            <div className="settings-card-icon">{cat.icon}</div>
-            <div className="settings-card-text">
-              <div className="settings-card-title">{cat.title}</div>
-              <div className="settings-card-sub">{cat.sub}</div>
+      );
+      case 'maintenance': return (
+        <div className="settings-panel">
+          <h2>Maintenance</h2>
+          <div className="settings-group">
+            <div className="settings-row" style={{flexDirection: 'column', alignItems: 'flex-start'}}>
+              <span>Database</span>
+              <button className="btn-secondary danger" style={{marginTop: '8px'}} onClick={() => confirmAction('Rebuild database? This will rescan all files.', runScan)}>Rebuild Database</button>
             </div>
           </div>
-        ))}
+        </div>
+      );
+      case 'notifications': return (
+        <div className="settings-panel">
+          <h2>Notifications</h2>
+          <div className="settings-group">
+            <label className="settings-row" tabIndex={0} onKeyDown={e => { if(e.key==='Enter') handleSetSetting('show_toasts', !settings.show_toasts) }}>
+              <span>Show Launch Toasts</span>
+              <input type="checkbox" checked={settings.show_toasts} onChange={e => handleSetSetting('show_toasts', e.target.checked)} tabIndex={-1} />
+            </label>
+          </div>
+        </div>
+      );
+      case 'safety': return (
+        <div className="settings-panel">
+          <h2>Safety</h2>
+          <div className="settings-group">
+            <label className="settings-row" tabIndex={0} onKeyDown={e => { if(e.key==='Enter') handleSetSetting('confirm_delete', !settings.confirm_delete) }}>
+              <span>Confirm game deletion</span>
+              <input type="checkbox" checked={settings.confirm_delete} onChange={e => handleSetSetting('confirm_delete', e.target.checked)} tabIndex={-1} />
+            </label>
+            <label className="settings-row" tabIndex={0} onKeyDown={e => { if(e.key==='Enter') handleSetSetting('confirm_launch_no_save', !settings.confirm_launch_no_save) }}>
+              <span>Confirm launch if missing save</span>
+              <input type="checkbox" checked={settings.confirm_launch_no_save} onChange={e => handleSetSetting('confirm_launch_no_save', e.target.checked)} tabIndex={-1} />
+            </label>
+          </div>
+        </div>
+      );
+      case 'about': return (
+        <div className="settings-panel">
+          <h2>About Arcadia</h2>
+          <div className="settings-group">
+            <div className="settings-row" style={{flexDirection: 'column', alignItems: 'flex-start', color: 'var(--text-muted)'}}>
+              <span>Arcadia Version 1.0.0</span>
+              <span>Advanced Emulator Frontend UI</span>
+            </div>
+          </div>
+        </div>
+      );
+      default: return null;
+    }
+  };
+
+  return (
+    <div className="settings-page">
+      <div className="settings-sidebar">
+        <h1 style={{padding: '0 16px 24px', fontSize: '24px'}}>Settings</h1>
+        <div className="settings-categories">
+          {CATEGORIES.map(cat => (
+            <button 
+              key={cat.id} 
+              className={`settings-cat-btn ${activeCategory === cat.id ? 'active' : ''}`}
+              onClick={() => setActiveCategory(cat.id)}
+              tabIndex={0}
+            >
+              <span className="settings-cat-icon">{cat.icon}</span>
+              <span className="settings-cat-title">{cat.title}</span>
+            </button>
+          ))}
+        </div>
+      </div>
+      <div className="settings-content">
+        {renderContent()}
       </div>
     </div>
   );

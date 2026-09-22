@@ -1,12 +1,17 @@
 const fs = require('fs');
 const path = require('path');
 const { spawn } = require('child_process');
+const { BrowserWindow } = require('electron');
 const dbService = require('../database/index.js');
 const savesService = require('../saves/index.js');
 
 class LauncherService {
   constructor() {
     this.activeProcesses = new Map();
+  }
+
+  _getMainWindow() {
+    return BrowserWindow.getAllWindows()[0];
   }
 
   async launch(gameId) {
@@ -26,18 +31,45 @@ class LauncherService {
       await savesService.backupSave(game.id, false);
     }
 
-    if (game.type === 'pc') {
-      return this._launchPCGame(game);
-    } else if (game.type === 'emulator') {
-      return this._launchEmulatorGame(game);
-    } else {
-      throw new Error(`Unknown game type: ${game.type}`);
+    try {
+      let result;
+      if (game.type === 'pc') {
+        result = await this._launchPCGame(game);
+      } else if (game.type === 'emulator') {
+        result = await this._launchEmulatorGame(game);
+      } else {
+        throw new Error(`Unknown game type: ${game.type}`);
+      }
+      return result;
+    } catch (e) {
+      // If launch fails, restore window immediately if it was modified
+      const win = this._getMainWindow();
+      if (win) {
+        if (dbService.getSetting('minimize_on_launch', false)) win.restore();
+        if (dbService.getSetting('close_on_launch', false)) win.show();
+      }
+      throw e;
     }
   }
 
   _setupProcessTracking(child, game) {
     this.activeProcesses.set(game.id, child);
     dbService.recordGameLaunch(game.id);
+
+    // Remember last emulator
+    if (game.type === 'emulator' && game._resolvedEmulatorId) {
+      game.emulator_id = game._resolvedEmulatorId;
+      dbService.upsertGame(game);
+    }
+
+    const win = this._getMainWindow();
+    if (win) {
+      if (dbService.getSetting('close_on_launch', false)) {
+        win.hide();
+      } else if (dbService.getSetting('minimize_on_launch', false)) {
+        win.minimize();
+      }
+    }
 
     child.on('exit', async (code) => {
       console.log(`[Launcher] Process for ${game.display_name} exited with code ${code}`);
@@ -47,6 +79,15 @@ class LauncherService {
       if (backupOnExit && game.save_path) {
         console.log(`[Launcher] Performing post-exit backup for ${game.display_name}...`);
         await savesService.backupSave(game.id, false);
+      }
+
+      if (dbService.getSetting('restore_on_exit', true)) {
+        const winToRestore = this._getMainWindow();
+        if (winToRestore) {
+          if (dbService.getSetting('close_on_launch', false)) winToRestore.show();
+          if (winToRestore.isMinimized()) winToRestore.restore();
+          winToRestore.focus();
+        }
       }
     });
   }
