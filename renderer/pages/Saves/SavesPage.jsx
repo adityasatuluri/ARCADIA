@@ -1,8 +1,10 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { useToast } from '../../components/Toast/ToastProvider';
 import './SavesPage.css';
 import SaveConflictModal from '../../components/SaveConflictModal/SaveConflictModal';
 
 export default function SavesPage({ searchQuery }) {
+  const { addToast } = useToast();
   const [statuses, setStatuses] = useState([]);
   const [loading, setLoading] = useState(true);
   
@@ -24,10 +26,10 @@ export default function SavesPage({ searchQuery }) {
     if (!window.arcadiaAPI) return;
     const res = await window.arcadiaAPI.saves.backup(id);
     if (res.success) {
-      alert(`Backed up successfully! Copied ${res.files} files.`);
+      addToast('Backup Completed', `Backed up successfully! Copied ${res.files} files.`, 'success');
       loadData();
     } else {
-      alert('Backup failed: ' + res.error);
+      addToast('Backup Failed', res.error, 'error');
     }
   };
 
@@ -41,7 +43,7 @@ export default function SavesPage({ searchQuery }) {
     if (!window.arcadiaAPI) return;
     // For simplicity, we just use 'backup_then_replace' for bulk populate
     const res = await window.arcadiaAPI.saves.populateAll('backup_then_replace');
-    alert(`Finished bulk populate.\nSuccessful: ${res.success}\nFailed: ${res.failed}`);
+    addToast('Bulk Populate', `Finished bulk populate.\nSuccessful: ${res.success}\nFailed: ${res.failed}`, 'info');
     loadData();
   };
 
@@ -53,10 +55,10 @@ export default function SavesPage({ searchQuery }) {
     if (target.isPopulate) {
       const res = await window.arcadiaAPI.saves.populate(target.id, mode);
       if (res.success) {
-        alert('Save populated successfully!');
+        addToast('Save Populated', 'Save populated successfully!', 'success');
         loadData();
       } else {
-        alert('Failed to populate: ' + res.error);
+        addToast('Population Failed', res.error, 'error');
       }
     }
   };

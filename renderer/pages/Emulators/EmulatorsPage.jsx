@@ -1,8 +1,10 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import EmulatorEditor from '../../components/EmulatorEditor/EmulatorEditor';
+import { useToast } from '../../components/Toast/ToastProvider';
 import './EmulatorsPage.css';
 
 export default function EmulatorsPage({ searchQuery }) {
+  const { addToast } = useToast();
   const [emulators, setEmulators] = useState([]);
   const [loading, setLoading] = useState(true);
   const [isEditing, setIsEditing] = useState(false);
@@ -25,10 +27,10 @@ export default function EmulatorsPage({ searchQuery }) {
     try {
       const res = await window.arcadiaAPI.launcher.launchEmulator(emu.id);
       if (!res.success) {
-        alert('Launch Error: ' + res.error);
+        addToast('Launch Failed', res.error, 'error');
       }
     } catch (err) {
-      alert('Launch Error: ' + err.message);
+      addToast('Launch Failed', err.message, 'error');
     }
   };
 
@@ -49,17 +51,20 @@ export default function EmulatorsPage({ searchQuery }) {
     if (!confirm(`Unregister emulator "${emu.display_name}"?\n\nYour actual emulator files will NOT be deleted.`)) return;
     
     await window.arcadiaAPI.emulators.remove(emu.id);
+    addToast('Emulator Removed', `"${emu.display_name}" unregistered.`, 'info');
     loadData();
   };
 
   const handleSave = async (emuData) => {
     if (!window.arcadiaAPI) return;
+    const isNew = !emuData.id;
     const res = await window.arcadiaAPI.emulators.upsert(emuData);
     if (res.success) {
       setIsEditing(false);
       loadData();
+      addToast(isNew ? 'Emulator Added' : 'Emulator Saved', 'Configuration saved successfully.', 'success');
     } else {
-      alert('Failed to save emulator: ' + res.error);
+      addToast('Configuration Error', res.error, 'error');
     }
   };
 

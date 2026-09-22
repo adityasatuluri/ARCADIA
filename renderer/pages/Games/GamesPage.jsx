@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import GameEditor from '../../components/GameEditor/GameEditor';
+import { useToast } from '../../components/Toast/ToastProvider';
 import './GamesPage.css';
 import defaultBg from '../../assets/background.png';
 
@@ -11,6 +12,7 @@ export default function GamesPage({
   hideNoArt, 
   tileSize 
 }) {
+  const { addToast } = useToast();
   const [games, setGames] = useState([]);
   const [emulators, setEmulators] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -38,13 +40,10 @@ export default function GamesPage({
   useEffect(() => {
     if (games.length > 0 && !focusedGame) {
       // Find the first valid item according to current filters/sort
-      // For now just taking first available isn't perfect if filtered out, 
-      // but spatial nav handles it later
     }
   }, [games, focusedGame]);
 
   // Patch all .game-tile focus methods to prevent the browser's instant native scroll jump
-  // which clashes with our smooth CSS translateX carousel animation.
   useEffect(() => {
     const tiles = document.querySelectorAll('.game-tile');
     tiles.forEach(t => {
@@ -67,13 +66,12 @@ export default function GamesPage({
     try {
       const res = await window.arcadiaAPI.launcher.launch(game.id);
       if (!res.success) {
-        alert('Launch Error: ' + res.error);
+        addToast('Launch Failed', res.error || 'Unknown error occurred.', 'error');
       } else {
-        // Optionally refresh to update last_played and play_count
         loadData();
       }
     } catch (e) {
-      alert('Launch Error: ' + e.message);
+      addToast('Launch Failed', e.message, 'error');
     }
   };
 
@@ -87,19 +85,22 @@ export default function GamesPage({
     if (!focusedGame || !window.arcadiaAPI) return;
     if (!confirm(`Remove "${focusedGame.display_name}" from library?\n\nThis only removes it from Arcadia.`)) return;
     await window.arcadiaAPI.games.remove(focusedGame.id);
+    addToast('Game Removed', `"${focusedGame.display_name}" has been removed.`, 'info');
     setFocusedGame(null);
     loadData();
   };
 
   const handleSaveGame = async (gameData) => {
     if (!window.arcadiaAPI) return;
+    const isNew = !gameData.id;
     const res = await window.arcadiaAPI.games.upsert(gameData);
     if (res.success) {
       setIsEditing(false);
       loadData();
       setFocusedGame(res.data);
+      addToast(isNew ? 'Game Added' : 'Game Saved', `"${res.data.display_name}" configured successfully.`, 'success');
     } else {
-      alert('Failed to save game: ' + res.error);
+      addToast('Configuration Error', res.error, 'error');
     }
   };
 

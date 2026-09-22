@@ -7,6 +7,7 @@ import EmulatorsPage from './pages/Emulators/EmulatorsPage';
 import SavesPage from './pages/Saves/SavesPage';
 import SettingsPage from './pages/Settings/SettingsPage';
 import ControllerHints from './components/ControllerHints/ControllerHints';
+import { ToastProvider } from './components/Toast/ToastProvider';
 
 function AppShell() {
   const [activeTab, setActiveTab] = useState('games');
@@ -100,7 +101,9 @@ export default function App() {
   return (
     <ThemeProvider>
       <GamepadProvider>
-        <AppShell />
+        <ToastProvider>
+          <AppShell />
+        </ToastProvider>
       </GamepadProvider>
     </ThemeProvider>
   );

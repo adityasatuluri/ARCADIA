@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useGamepadConfig } from '../../context/GamepadContext';
 import { useTheme } from '../../theme/ThemeContext';
+import { useToast } from '../../components/Toast/ToastProvider';
 import './SettingsPage.css';
 
 const CATEGORIES = [
@@ -21,6 +22,7 @@ const CATEGORIES = [
 ];
 
 export default function SettingsPage() {
+  const { addToast } = useToast();
   const [activeCategory, setActiveCategory] = useState('appearance');
   const [libraryPaths, setLibraryPaths] = useState([]);
   const [scanStatus, setScanStatus] = useState('');
@@ -107,8 +109,13 @@ export default function SettingsPage() {
     
     const res = await window.arcadiaAPI.scanner.start(libraryPaths);
     
-    if (res.success) setScanStatus(`Done — ${res.stats.gamesDiscovered} games, ${res.stats.emulatorsDiscovered} emulators`);
-    else setScanStatus(`Error: ${res.error}`);
+    if (res.success) {
+      setScanStatus(`Done — ${res.stats.gamesDiscovered} games, ${res.stats.emulatorsDiscovered} emulators`);
+      addToast('Scan Completed', `Discovered ${res.stats.gamesDiscovered} games and ${res.stats.emulatorsDiscovered} emulators.`, 'success');
+    } else {
+      setScanStatus(`Error: ${res.error}`);
+      addToast('Scan Failed', res.error, 'error');
+    }
     setIsScanning(false);
   };
 
@@ -330,7 +337,7 @@ export default function SettingsPage() {
               <p style={{fontSize: '12px', color: 'var(--text-muted)', marginTop: '4px'}}>Clears downloaded thumbnails and background art.</p>
               <button className="btn-secondary danger" style={{marginTop: '8px'}} onClick={() => confirmAction('Rebuild Artwork Cache?', async () => {
                 await window.arcadiaAPI.maintenance.rebuildArtwork();
-                alert('Artwork cache rebuilt successfully.');
+                addToast('Storage', 'Artwork cache rebuilt successfully.', 'success');
               })}>Rebuild Artwork Cache</button>
             </div>
             <div className="settings-row" style={{flexDirection: 'column', alignItems: 'flex-start'}}>
@@ -357,14 +364,19 @@ export default function SettingsPage() {
               <button className="btn-secondary" style={{marginTop: '8px'}} onClick={async () => {
                 const res = await window.arcadiaAPI.maintenance.runDiagnostics();
                 if (res.success) {
-                  let msg = `Diagnostics Report:\n\nGames: ${res.data.totalGames} (Invalid: ${res.data.invalidGames})\nEmulators: ${res.data.totalEmulators} (Invalid: ${res.data.invalidEmulators})\nInvalid Saves: ${res.data.invalidSaves}\n\n`;
+                  let msg = `Games: ${res.data.totalGames} (Invalid: ${res.data.invalidGames})\nEmulators: ${res.data.totalEmulators} (Invalid: ${res.data.invalidEmulators})\nInvalid Saves: ${res.data.invalidSaves}\n\n`;
                   if (res.data.warnings.length > 0) {
                     msg += "Warnings:\n" + res.data.warnings.slice(0, 10).join('\n');
                     if (res.data.warnings.length > 10) msg += `\n...and ${res.data.warnings.length - 10} more.`;
                   } else {
                     msg += "No issues found!";
                   }
-                  alert(msg);
+                  // For huge diagnostic reports, window.alert might still be better than a small toast,
+                  // but we should adhere to non-blocking UI for normal notifications.
+                  // For diagnostics, alert is fine as it's an explicit report read-out,
+                  // but we'll show a toast first.
+                  addToast('Diagnostics Completed', 'Check the report.', 'info');
+                  setTimeout(() => alert(msg), 100);
                 }
               }}>Run Diagnostics</button>
             </div>
@@ -375,10 +387,11 @@ export default function SettingsPage() {
                   setScanStatus('Rebuilding Database...');
                   await window.arcadiaAPI.maintenance.rebuildDatabase();
                   setScanStatus('Database rebuilt successfully.');
+                  addToast('Maintenance', 'Database rebuilt successfully.', 'success');
                 })}>Rebuild Database</button>
                 <button className="btn-secondary danger" onClick={() => confirmAction('Reset all settings to default values?', async () => {
                   await window.arcadiaAPI.system.resetSettings();
-                  alert('Settings reset. Please restart Arcadia.');
+                  addToast('Settings Reset', 'Please restart Arcadia.', 'warning');
                 })}>Reset Settings</button>
               </div>
             </div>
@@ -426,14 +439,14 @@ export default function SettingsPage() {
                   const targetPath = await window.arcadiaAPI.system.showSaveDialog({ defaultPath: 'arcadia_config.json', filters: [{name: 'JSON', extensions: ['json']}] });
                   if (targetPath) {
                     await window.arcadiaAPI.system.exportConfig(targetPath);
-                    alert('Configuration exported successfully.');
+                    addToast('Configuration', 'Configuration exported successfully.', 'success');
                   }
                 }}>Export Configuration</button>
                 <button className="btn-secondary" onClick={async () => {
                   const sourcePath = await window.arcadiaAPI.system.showOpenDialog({ filters: [{name: 'JSON', extensions: ['json']}] });
                   if (sourcePath) {
                     await window.arcadiaAPI.system.importConfig(sourcePath);
-                    alert('Configuration imported successfully. Please restart Arcadia.');
+                    addToast('Configuration', 'Configuration imported successfully. Please restart Arcadia.', 'success');
                   }
                 }}>Import Configuration</button>
               </div>
