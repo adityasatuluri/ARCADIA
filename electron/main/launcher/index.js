@@ -23,12 +23,11 @@ class LauncherService {
     }
   }
 
-  _launchPCGame(game) {
+  async _launchPCGame(game) {
     if (!game.executable) {
       throw new Error('Executable path is not configured for this game.');
     }
 
-    // Verify invalid executable paths
     if (!fs.existsSync(game.executable)) {
       throw new Error(`Executable not found at path: ${game.executable}`);
     }
@@ -38,9 +37,12 @@ class LauncherService {
       cwd = path.dirname(game.executable);
     }
 
+    if (!fs.existsSync(cwd)) {
+      throw new Error(`Working directory not found: ${cwd}`);
+    }
+
     let args = [];
     if (game.arguments && game.arguments.trim() !== '') {
-      // Split arguments by space but respect quotes
       const regex = /[^\s"]+|"([^"]*)"/gi;
       let match;
       while ((match = regex.exec(game.arguments)) != null) {
@@ -53,28 +55,40 @@ class LauncherService {
     console.log(`[Launcher] CWD: ${cwd}`);
     console.log(`[Launcher] Args: ${JSON.stringify(args)}`);
 
-    try {
-      const isBatch = game.executable.toLowerCase().endsWith('.bat') || game.executable.toLowerCase().endsWith('.cmd');
-      
-      const child = spawn(game.executable, args, {
-        cwd: cwd,
-        detached: true, // Allow it to run independently of the Electron process
-        shell: isBatch,
-        stdio: 'ignore'
-      });
+    return new Promise((resolve, reject) => {
+      try {
+        const isBatch = game.executable.toLowerCase().endsWith('.bat') || game.executable.toLowerCase().endsWith('.cmd');
+        
+        const child = spawn(game.executable, args, {
+          cwd: cwd,
+          detached: true,
+          shell: isBatch,
+          stdio: 'ignore'
+        });
 
-      child.unref(); // Prevent parent from waiting for child to exit
-      
-      this.activeProcesses.set(game.id, child);
-      
-      // Record launch in DB
-      dbService.recordGameLaunch(game.id);
+        let hasErrored = false;
 
-      return { success: true, message: `Launched ${game.display_name}` };
-    } catch (error) {
-      console.error(`[Launcher] Failed to launch ${game.display_name}:`, error);
-      throw new Error(`Failed to launch process: ${error.message}`);
-    }
+        child.on('error', (err) => {
+          hasErrored = true;
+          console.error(`[Launcher] Spawn error for ${game.display_name}:`, err);
+          reject(new Error(`Failed to launch process: ${err.message}`));
+        });
+
+        // Wait a short timeout to ensure the process didn't immediately crash
+        setTimeout(() => {
+          if (!hasErrored) {
+            child.unref();
+            this.activeProcesses.set(game.id, child);
+            dbService.recordGameLaunch(game.id);
+            resolve({ success: true, message: `Launched ${game.display_name}` });
+          }
+        }, 800);
+
+      } catch (error) {
+        console.error(`[Launcher] Failed to launch ${game.display_name}:`, error);
+        reject(new Error(`Failed to launch process: ${error.message}`));
+      }
+    });
   }
 
   async launchEmulator(emuId) {
@@ -96,6 +110,10 @@ class LauncherService {
       cwd = path.dirname(emu.executable);
     }
 
+    if (!fs.existsSync(cwd)) {
+      throw new Error(`Working directory not found: ${cwd}`);
+    }
+
     let args = [];
     if (emu.arguments && emu.arguments.trim() !== '') {
       const regex = /[^\s"]+|"([^"]*)"/gi;
@@ -110,22 +128,37 @@ class LauncherService {
     console.log(`[Launcher] CWD: ${cwd}`);
     console.log(`[Launcher] Args: ${JSON.stringify(args)}`);
 
-    try {
-      const isBatch = emu.executable.toLowerCase().endsWith('.bat') || emu.executable.toLowerCase().endsWith('.cmd');
-      
-      const child = spawn(emu.executable, args, {
-        cwd: cwd,
-        detached: true,
-        shell: isBatch,
-        stdio: 'ignore'
-      });
+    return new Promise((resolve, reject) => {
+      try {
+        const isBatch = emu.executable.toLowerCase().endsWith('.bat') || emu.executable.toLowerCase().endsWith('.cmd');
+        
+        const child = spawn(emu.executable, args, {
+          cwd: cwd,
+          detached: true,
+          shell: isBatch,
+          stdio: 'ignore'
+        });
 
-      child.unref();
-      return { success: true, message: `Launched ${emu.display_name}` };
-    } catch (error) {
-      console.error(`[Launcher] Failed to launch ${emu.display_name}:`, error);
-      throw new Error(`Failed to launch emulator: ${error.message}`);
-    }
+        let hasErrored = false;
+
+        child.on('error', (err) => {
+          hasErrored = true;
+          console.error(`[Launcher] Spawn error for ${emu.display_name}:`, err);
+          reject(new Error(`Failed to launch emulator: ${err.message}`));
+        });
+
+        setTimeout(() => {
+          if (!hasErrored) {
+            child.unref();
+            resolve({ success: true, message: `Launched ${emu.display_name}` });
+          }
+        }, 800);
+
+      } catch (error) {
+        console.error(`[Launcher] Failed to launch ${emu.display_name}:`, error);
+        reject(new Error(`Failed to launch emulator: ${error.message}`));
+      }
+    });
   }
 }
 
