@@ -275,11 +275,23 @@ export default function SettingsPage() {
           <div className="settings-group">
             <label className="settings-row" tabIndex={0} onKeyDown={e => { if(e.key==='Enter') handleSetSetting('minimize_on_launch', !settings.minimize_on_launch) }}>
               <span>Minimize Arcadia on game launch</span>
-              <input type="checkbox" checked={settings.minimize_on_launch} onChange={e => handleSetSetting('minimize_on_launch', e.target.checked)} tabIndex={-1} />
+              <input type="checkbox" checked={settings.minimize_on_launch || false} onChange={e => handleSetSetting('minimize_on_launch', e.target.checked)} tabIndex={-1} />
+            </label>
+            <label className="settings-row" tabIndex={0} onKeyDown={e => { if(e.key==='Enter') handleSetSetting('close_on_launch', !settings.close_on_launch) }}>
+              <span>Hide Arcadia when game starts</span>
+              <input type="checkbox" checked={settings.close_on_launch || false} onChange={e => handleSetSetting('close_on_launch', e.target.checked)} tabIndex={-1} />
             </label>
             <label className="settings-row" tabIndex={0} onKeyDown={e => { if(e.key==='Enter') handleSetSetting('restore_on_exit', !settings.restore_on_exit) }}>
               <span>Restore Arcadia on game exit</span>
-              <input type="checkbox" checked={settings.restore_on_exit} onChange={e => handleSetSetting('restore_on_exit', e.target.checked)} tabIndex={-1} />
+              <input type="checkbox" checked={settings.restore_on_exit ?? true} onChange={e => handleSetSetting('restore_on_exit', e.target.checked)} tabIndex={-1} />
+            </label>
+            <label className="settings-row">
+              <span>Launch Timeout (ms)</span>
+              <input type="number" value={settings.launch_timeout || 1500} onChange={e => handleSetSetting('launch_timeout', parseInt(e.target.value) || 1500)} style={{background: 'var(--bg-primary)', border: '1px solid var(--border-subtle)', color: 'var(--text-primary)', padding: '8px 12px', borderRadius: 'var(--radius-sm)', width: '100px'}} tabIndex={0} />
+            </label>
+            <label className="settings-row">
+              <span>Default Launch Arguments</span>
+              <input type="text" placeholder="-fullscreen" value={settings.default_launch_arguments || ''} onChange={e => handleSetSetting('default_launch_arguments', e.target.value)} style={{width: '200px'}} tabIndex={0} />
             </label>
           </div>
         </div>

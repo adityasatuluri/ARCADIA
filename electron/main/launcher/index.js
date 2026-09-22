@@ -104,6 +104,9 @@ class LauncherService {
     if (!emu) {
       throw new Error('Configuration Error: No suitable emulator found for this game or platform.');
     }
+    
+    // For remembering last emulator
+    game._resolvedEmulatorId = emu.id;
 
     // 2. Executable validation
     if (!emu.executable) {
@@ -128,26 +131,18 @@ class LauncherService {
     }
 
     // 5. Argument handling
-    let argsString = emu.arguments || '';
-    const hasGamePathToken = argsString.includes('{game_path}');
-    
     let args = [];
-    if (argsString.trim() !== '') {
+    const defaultArgs = dbService.getSetting('default_launch_arguments', '');
+    const combinedArgsString = [defaultArgs, emu.arguments, game.arguments].filter(Boolean).join(' ');
+
+    const hasGamePathToken = combinedArgsString.includes('{game_path}');
+    
+    if (combinedArgsString.trim() !== '') {
       const regex = /[^\s"]+|"([^"]*)"/gi;
       let match;
-      while ((match = regex.exec(argsString)) != null) {
+      while ((match = regex.exec(combinedArgsString)) != null) {
         let token = match[1] ? match[1] : match[0];
         // Replace token safely AFTER splitting so spaces in the path don't break parsing
-        token = token.replace(/{game_path}/g, game.game_path || '');
-        args.push(token);
-      }
-    }
-    
-    if (game.arguments && game.arguments.trim() !== '') {
-      const regex = /[^\s"]+|"([^"]*)"/gi;
-      let match;
-      while ((match = regex.exec(game.arguments)) != null) {
-        let token = match[1] ? match[1] : match[0];
         token = token.replace(/{game_path}/g, game.game_path || '');
         args.push(token);
       }
@@ -169,12 +164,13 @@ class LauncherService {
           reject(new Error(`Failed to launch emulator: ${err.message}`));
         });
 
+        const timeoutMs = dbService.getSetting('launch_timeout', 1500);
         setTimeout(() => {
           if (!hasErrored) {
             this._setupProcessTracking(child, game);
             resolve({ success: true, message: `Launched ${game.display_name} via ${emu.display_name}` });
           }
-        }, 800);
+        }, timeoutMs);
       } catch (error) {
         reject(new Error(`Failed to launch emulator: ${error.message}`));
       }
@@ -190,10 +186,13 @@ class LauncherService {
     if (!fs.existsSync(cwd)) throw new Error(`Working directory not found: ${cwd}`);
 
     let args = [];
-    if (game.arguments && game.arguments.trim() !== '') {
+    const defaultArgs = dbService.getSetting('default_launch_arguments', '');
+    const combinedArgs = [defaultArgs, game.arguments].filter(Boolean).join(' ');
+    
+    if (combinedArgs.trim() !== '') {
       const regex = /[^\s"]+|"([^"]*)"/gi;
       let match;
-      while ((match = regex.exec(game.arguments)) != null) {
+      while ((match = regex.exec(combinedArgs)) != null) {
         let token = match[1] ? match[1] : match[0];
         token = token.replace(/{game_path}/g, game.game_path || '');
         args.push(token);
@@ -211,12 +210,13 @@ class LauncherService {
           reject(new Error(`Failed to launch process: ${err.message}`));
         });
 
+        const timeoutMs = dbService.getSetting('launch_timeout', 1500);
         setTimeout(() => {
           if (!hasErrored) {
             this._setupProcessTracking(child, game);
             resolve({ success: true, message: `Launched ${game.display_name}` });
           }
-        }, 800);
+        }, timeoutMs);
       } catch (error) {
         reject(new Error(`Failed to launch process: ${error.message}`));
       }
