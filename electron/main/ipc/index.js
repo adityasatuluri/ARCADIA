@@ -1,4 +1,4 @@
-const { ipcMain, dialog } = require('electron');
+const { ipcMain, dialog, BrowserWindow } = require('electron');
 const dbService = require('../database/index.js');
 const scannerService = require('../scanner/index.js');
 const launcherService = require('../launcher/index.js');
@@ -15,31 +15,7 @@ function registerIpcHandlers() {
     return filePaths[0];
   });
 
-  /* ======== SETTINGS ======== */
-  ipcMain.handle('settings:get-all', async () => {
-    try {
-      return { success: true, data: dbService.getAllSettings() };
-    } catch (e) {
-      return { success: false, error: e.message };
-    }
-  });
 
-  ipcMain.handle('settings:get', async (_, key) => {
-    try {
-      return { success: true, data: dbService.getSetting(key) };
-    } catch (e) {
-      return { success: false, error: e.message };
-    }
-  });
-
-  ipcMain.handle('settings:set', async (_, key, value) => {
-    try {
-      dbService.setSetting(key, value);
-      return { success: true };
-    } catch (e) {
-      return { success: false, error: e.message };
-    }
-  });
 
   /* ======== LAUNCHER ======== */
   ipcMain.handle('launcher:launch', async (event, gameId) => {
@@ -139,6 +115,11 @@ function registerIpcHandlers() {
   /* ======== SETTINGS ======== */
   ipcMain.handle('settings:get-all', () => {
     try { return { success: true, data: dbService.getAllSettings() }; }
+    catch (e) { return { success: false, error: e.message }; }
+  });
+
+  ipcMain.handle('settings:get', (_, key) => {
+    try { return { success: true, data: dbService.getSetting(key) }; }
     catch (e) { return { success: false, error: e.message }; }
   });
 

@@ -27,10 +27,15 @@ contextBridge.exposeInMainWorld('arcadiaAPI', {
   scanner: {
     start: (targetPaths) => ipcRenderer.invoke('scanner:start', targetPaths),
     cancel: () => ipcRenderer.invoke('scanner:cancel'),
-    onProgress: (cb) => ipcRenderer.on('scanner:progress', (_, data) => cb(data))
+    onProgress: (cb) => {
+      const listener = (_, data) => cb(data);
+      ipcRenderer.on('scanner:progress', listener);
+      return () => ipcRenderer.removeListener('scanner:progress', listener);
+    }
   },
   settings: {
     getAll: () => ipcRenderer.invoke('settings:get-all'),
+    get: (key) => ipcRenderer.invoke('settings:get', key),
     set: (key, value) => ipcRenderer.invoke('settings:set', key, value)
   }
 });

@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { ThemeProvider } from './theme/ThemeContext';
+import { GamepadProvider } from './context/GamepadContext';
 import TopBar from './components/TopBar/TopBar';
 import GamesPage from './pages/Games/GamesPage';
 import EmulatorsPage from './pages/Emulators/EmulatorsPage';
@@ -61,7 +62,9 @@ function AppShell() {
 export default function App() {
   return (
     <ThemeProvider>
-      <AppShell />
+      <GamepadProvider>
+        <AppShell />
+      </GamepadProvider>
     </ThemeProvider>
   );
 }

@@ -89,7 +89,10 @@ export default function GamesPage() {
         onFocus={() => setFocusedGame(game)}
         onMouseEnter={() => setFocusedGame(game)}
         onKeyDown={(e) => {
-          if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleTileClick(game); }
+          if ((e.key === 'Enter' || e.key === ' ') && e.target === e.currentTarget) { 
+            e.preventDefault(); 
+            handleTileClick(game); 
+          }
         }}
       >
         <div className="game-tile-cover-wrap">
@@ -98,10 +101,24 @@ export default function GamesPage() {
           ) : (
             <div className="game-tile-placeholder">🎮</div>
           )}
-          {game.favorite ? <span className="game-tile-fav">⭐</span> : null}
+          {game.favorite && <span className="game-tile-fav">⭐</span>}
           <span className="game-tile-platform">{game.platform}</span>
         </div>
         <div className="game-tile-name">{game.display_name}</div>
+        
+        {isFocused && (
+          <div className="tile-action-column">
+            <button className="tile-action-btn" onClick={(e) => { e.stopPropagation(); handleToggleFav(); }}>
+              {game.favorite ? '★ Unfavorite' : '☆ Favorite'}
+            </button>
+            <button className="tile-action-btn" onClick={(e) => { e.stopPropagation(); setEditingGame(game); setIsEditing(true); }}>
+              ✏ Edit
+            </button>
+            <button className="tile-action-btn danger" onClick={(e) => { e.stopPropagation(); handleRemove(); }}>
+              ✕ Remove
+            </button>
+          </div>
+        )}
       </div>
     );
   };
@@ -176,9 +193,18 @@ export default function GamesPage() {
     );
   }
 
+  const bgSrc = focusedGame?.background_path ? `file://${focusedGame.background_path.replace(/\\/g, '/')}` : null;
+
   return (
     <div className="games-page">
-      
+      {/* Global Background */}
+      {bgSrc && (
+        <div className="global-hero-bg">
+          <img src={bgSrc} alt="" />
+          <div className="global-hero-overlay"></div>
+        </div>
+      )}
+
       {/* Search & Filter Top Bar */}
       <div className="library-toolbar">
         <div className="library-search-box">
@@ -233,43 +259,6 @@ export default function GamesPage() {
           ))}
           {processedLibrary.length === 0 && <div style={{padding: '40px', color: 'var(--text-muted)'}}>No games match your search/filters.</div>}
         </div>
-
-        {/* Focus Details Panel */}
-        {focusedGame && (
-          <div className="focus-panel-container">
-            <div className="focus-panel" key={focusedGame.id}>
-              <div className="focus-cover">
-                {focusedGame.icon_path ? (
-                  <img src={`file://${focusedGame.icon_path.replace(/\\/g, '/')}`} alt="" draggable={false} loading="lazy" />
-                ) : (
-                  <div className="game-tile-placeholder" style={{ height: '100%', fontSize: 48 }}>🎮</div>
-                )}
-              </div>
-
-              <div className="focus-info">
-                <div className="focus-title">{focusedGame.display_name}</div>
-                <div className="focus-subtitle">
-                  <span>{focusedGame.platform}</span>
-                  {focusedGame.year && <span>{focusedGame.year}</span>}
-                  {focusedGame.developer && <span>{focusedGame.developer}</span>}
-                </div>
-                {focusedGame.description && <div className="focus-desc">{focusedGame.description}</div>}
-                
-                <div className="focus-tags">
-                  {focusedGame.genre?.map(g => <span key={g} className="focus-tag">{g}</span>)}
-                  {focusedGame.tags?.map(t => <span key={t} className="focus-tag">{t}</span>)}
-                </div>
-
-                <div className="focus-actions">
-                  <button className="btn-play" tabIndex={0} onClick={() => handleTileClick(focusedGame)}>▶ Play</button>
-                  <button className="btn-action" tabIndex={0} onClick={handleToggleFav}>{focusedGame.favorite ? '★ Unfav' : '☆ Fav'}</button>
-                  <button className="btn-action" tabIndex={0} onClick={() => {setEditingGame(focusedGame); setIsEditing(true);}}>✏ Edit</button>
-                  <button className="btn-action danger" tabIndex={0} onClick={handleRemove}>✕ Remove</button>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
       </div>
 
       {isEditing && <GameEditor game={editingGame} emulators={emulators} onClose={() => setIsEditing(false)} onSave={handleSaveGame} />}

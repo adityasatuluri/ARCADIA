@@ -159,17 +159,18 @@ class ScannerService {
   _registerGame(cfg, dir, defaultIcon, gameFiles) {
     let id = cfg.name || path.basename(dir).toLowerCase().replace(/[^a-z0-9]+/g, '-');
     
-    // Prevent duplicate IDs across libraries (append dir hash if needed, but for now fallback to simple dedupe)
     if (this.discoveredGameIds.has(id)) {
        id = id + '-' + Math.random().toString(36).substr(2, 5);
     }
-    
     this.discoveredGameIds.add(id);
 
     const icon = cfg.icon && !path.isAbsolute(cfg.icon)
       ? path.join(dir, cfg.icon) : (cfg.icon || defaultIcon || '');
-    const gamePath = gameFiles.length > 0 ? path.join(dir, gameFiles[0]) : '';
+      
+    const background = cfg.largecover && !path.isAbsolute(cfg.largecover)
+      ? path.join(dir, cfg.largecover) : (cfg.largecover || '');
 
+    const gamePath = gameFiles.length > 0 ? path.join(dir, gameFiles[0]) : '';
     const parentFolder = path.basename(path.dirname(dir)).toLowerCase();
 
     dbService.upsertGame({
@@ -183,6 +184,7 @@ class ScannerService {
       arguments: cfg.arguments || '',
       working_directory: cfg.working_directory || '',
       icon_path: icon,
+      background_path: background,
       description: cfg.description || '',
       year: cfg.year || null,
       genre: cfg.genre || [],

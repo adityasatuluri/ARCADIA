@@ -1,11 +1,10 @@
 import React, { useState, useEffect } from 'react';
+import { useGamepadConfig } from '../../context/GamepadContext';
 import './SettingsPage.css';
 
 const CATEGORIES = [
   { id: 'appearance', icon: '🎨', title: 'Appearance', sub: 'Theme, background, UI density' },
-  { id: 'controller', icon: '🎮', title: 'Controller', sub: 'Gamepad, mapping, sensitivity' },
   { id: 'emulators', icon: '🕹️', title: 'Emulators', sub: 'Manage, add, platform defaults' },
-  { id: 'library', icon: '📁', title: 'Game Library', sub: 'Folders, scanning, detection' },
   { id: 'saves', icon: '💾', title: 'Save Manager', sub: 'Paths, backups, populate' },
   { id: 'artwork', icon: '🖼️', title: 'Artwork & Metadata', sub: 'Covers, cache, auto-detection' },
   { id: 'launch', icon: '🚀', title: 'Launch Behavior', sub: 'Minimize, restore, timeout' },
@@ -24,43 +23,42 @@ export default function SettingsPage() {
   const [isScanning, setIsScanning] = useState(false);
   const [progressData, setProgressData] = useState(null);
 
+  // Controller Settings
+  const { 
+    gamepads, activeGamepadId, setActiveGamepadId,
+    analogSensitivity, triggerSensitivity, vibrationEnabled, promptStyle,
+    updateConfig, vibrate
+  } = useGamepadConfig();
+
   useEffect(() => {
-    // Load library paths from settings
     if (!window.arcadiaAPI) return;
-    
     window.arcadiaAPI.settings.getAll().then(res => {
       if (res.success && res.data && res.data.library_locations) {
         setLibraryPaths(res.data.library_locations);
       }
     });
 
-    // Listen to progress
     const unsubscribe = window.arcadiaAPI.scanner.onProgress((data) => {
       setProgressData(data);
     });
-    return unsubscribe;
+    
+    return () => {
+      if (typeof unsubscribe === 'function') unsubscribe();
+    };
   }, []);
 
   const savePaths = async (newPaths) => {
     setLibraryPaths(newPaths);
-    if (window.arcadiaAPI) {
-      await window.arcadiaAPI.settings.set('library_locations', newPaths);
-    }
+    if (window.arcadiaAPI) await window.arcadiaAPI.settings.set('library_locations', newPaths);
   };
 
   const handleAddFolder = async () => {
     if (!window.arcadiaAPI) return;
     const path = await window.arcadiaAPI.system.showOpenDialog({ properties: ['openDirectory'] });
-    if (path && !libraryPaths.includes(path)) {
-      const newPaths = [...libraryPaths, path];
-      savePaths(newPaths);
-    }
+    if (path && !libraryPaths.includes(path)) savePaths([...libraryPaths, path]);
   };
 
-  const handleRemoveFolder = (pathToRemove) => {
-    const newPaths = libraryPaths.filter(p => p !== pathToRemove);
-    savePaths(newPaths);
-  };
+  const handleRemoveFolder = (pathToRemove) => savePaths(libraryPaths.filter(p => p !== pathToRemove));
 
   const runScan = async () => {
     if (!window.arcadiaAPI || libraryPaths.length === 0) return;
@@ -70,13 +68,8 @@ export default function SettingsPage() {
     
     const res = await window.arcadiaAPI.scanner.start(libraryPaths);
     
-    if (res.success) {
-      const s = res.stats;
-      setScanStatus(`Done — ${s.gamesDiscovered} games, ${s.emulatorsDiscovered} emulators found (${s.filesDiscovered} files crawled)`);
-    } else {
-      setScanStatus(`Error: ${res.error}`);
-    }
-    
+    if (res.success) setScanStatus(`Done — ${res.stats.gamesDiscovered} games, ${res.stats.emulatorsDiscovered} emulators found (${res.stats.filesDiscovered} files crawled)`);
+    else setScanStatus(`Error: ${res.error}`);
     setIsScanning(false);
   };
 
@@ -94,10 +87,7 @@ export default function SettingsPage() {
       <div className="library-locations-section">
         <h2 className="section-label" style={{ marginTop: 0 }}>Library Locations</h2>
         <div className="library-card">
-          <p className="library-card-desc">
-            Arcadia will scan these folders for games, ROMs, and emulators. Missing games will be automatically removed from the database during a scan.
-          </p>
-          
+          <p className="library-card-desc">Arcadia will scan these folders for games, ROMs, and emulators.</p>
           <div className="library-paths-list">
             {libraryPaths.length === 0 ? (
               <div className="library-path-empty">No library folders configured.</div>
@@ -110,11 +100,8 @@ export default function SettingsPage() {
               ))
             )}
           </div>
-
           <div className="library-actions">
-            <button className="btn-secondary" onClick={handleAddFolder} tabIndex={0}>
-              + Add Folder
-            </button>
+            <button className="btn-secondary" onClick={handleAddFolder} tabIndex={0}>+ Add Folder</button>
             <div style={{ display: 'flex', gap: '8px', marginLeft: 'auto' }}>
               {isScanning ? (
                 <button className="btn-secondary danger" onClick={cancelScan} tabIndex={0}>Cancel Scan</button>
@@ -125,8 +112,6 @@ export default function SettingsPage() {
               )}
             </div>
           </div>
-
-          {/* Scanner Progress UI */}
           {(isScanning || scanStatus) && (
             <div className="scanner-progress-box">
               <div className="scanner-status-text">{scanStatus || `Phase: ${progressData?.phase}`}</div>
@@ -145,7 +130,78 @@ export default function SettingsPage() {
         </div>
       </div>
 
-      <h2 className="section-label">All Categories</h2>
+      <div className="library-locations-section" style={{ marginTop: '32px' }}>
+        <h2 className="section-label">Controller & Gamepad</h2>
+        <div className="library-card">
+          <p className="library-card-desc">
+            Press any button on your controller to detect it.
+          </p>
+
+          <div style={{ marginBottom: '24px' }}>
+            <h3 style={{ fontSize: '14px', color: '#fff', marginBottom: '8px' }}>Detected Controllers</h3>
+            {gamepads.length === 0 ? (
+              <div style={{ padding: '16px', background: 'rgba(255,255,255,0.05)', borderRadius: '8px', color: 'rgba(255,255,255,0.5)', textAlign: 'center' }}>
+                No controllers detected. Press a button to wake your controller.
+              </div>
+            ) : (
+              <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
+                {gamepads.map(gp => (
+                  <div key={gp.index} 
+                       style={{ padding: '12px 16px', border: gp.id === activeGamepadId ? '1px solid var(--accent-primary)' : '1px solid rgba(255,255,255,0.1)', background: gp.id === activeGamepadId ? 'rgba(var(--accent-rgb), 0.1)' : 'rgba(0,0,0,0.3)', borderRadius: '8px', cursor: 'pointer' }}
+                       onClick={() => setActiveGamepadId(gp.id)}
+                       tabIndex={0}>
+                    <div style={{ fontWeight: '600', color: '#fff' }}>{gp.id.split('(')[0].trim()}</div>
+                    <div style={{ fontSize: '12px', color: 'rgba(255,255,255,0.5)' }}>Index: {gp.index} {gp.id === activeGamepadId ? '(Active)' : ''}</div>
+                  </div>
+                ))}
+              </div>
+            )}
+            {gamepads.length > 0 && (
+              <button className="btn-secondary" style={{ marginTop: '12px' }} onClick={() => vibrate(500, 1.0, 1.0)} tabIndex={0}>Test Rumble</button>
+            )}
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px' }}>
+            <div>
+              <h3 style={{ fontSize: '14px', color: '#fff', marginBottom: '16px' }}>Input Sensitivity</h3>
+              <div style={{ marginBottom: '16px' }}>
+                <label style={{ display: 'block', fontSize: '13px', color: 'rgba(255,255,255,0.7)', marginBottom: '8px' }}>
+                  Analog Stick Deadzone ({(analogSensitivity * 100).toFixed(0)}%)
+                </label>
+                <input type="range" min="0" max="1" step="0.05" value={analogSensitivity} onChange={e => updateConfig('analogSensitivity', parseFloat(e.target.value))} style={{ width: '100%' }} tabIndex={0} />
+              </div>
+              <div>
+                <label style={{ display: 'block', fontSize: '13px', color: 'rgba(255,255,255,0.7)', marginBottom: '8px' }}>
+                  Trigger Scroll Sensitivity ({(triggerSensitivity * 100).toFixed(0)}%)
+                </label>
+                <input type="range" min="0" max="1" step="0.05" value={triggerSensitivity} onChange={e => updateConfig('triggerSensitivity', parseFloat(e.target.value))} style={{ width: '100%' }} tabIndex={0} />
+              </div>
+            </div>
+            
+            <div>
+              <h3 style={{ fontSize: '14px', color: '#fff', marginBottom: '16px' }}>Preferences</h3>
+              <div style={{ marginBottom: '16px' }}>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', color: 'rgba(255,255,255,0.7)', cursor: 'pointer' }}>
+                  <input type="checkbox" checked={vibrationEnabled} onChange={e => updateConfig('vibrationEnabled', e.target.checked)} tabIndex={0} />
+                  Enable UI Navigation Vibration
+                </label>
+              </div>
+              <div>
+                <label style={{ display: 'block', fontSize: '13px', color: 'rgba(255,255,255,0.7)', marginBottom: '8px' }}>
+                  Button Prompts Style
+                </label>
+                <select value={promptStyle} onChange={e => updateConfig('promptStyle', e.target.value)} style={{ width: '100%', padding: '8px', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.2)', color: '#fff', borderRadius: '4px' }} tabIndex={0}>
+                  <option value="xbox">Xbox (A, B, X, Y)</option>
+                  <option value="ps">PlayStation (Cross, Circle, Square, Triangle)</option>
+                  <option value="generic">Generic (Confirm, Cancel)</option>
+                </select>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <h2 className="section-label" style={{ marginTop: '32px' }}>Other Categories</h2>
       <div className="settings-grid">
         {CATEGORIES.map(cat => (
           <div key={cat.id} className="settings-card" tabIndex={0}>

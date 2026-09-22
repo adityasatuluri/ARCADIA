@@ -75,15 +75,7 @@ export default function TopBar({ activeTab, onTabChange }) {
           />
         </div>
 
-        {/* Theme toggle */}
-        <button 
-          className="topbar-icon-btn theme-toggle" 
-          onClick={toggleTheme}
-          title={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}
-          tabIndex={0}
-        >
-          {theme === 'dark' ? '☀' : '🌙'}
-        </button>
+
 
         {/* Settings gear */}
         <button 

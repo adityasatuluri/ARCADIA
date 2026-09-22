@@ -12,8 +12,10 @@ export default function GameEditor({ game, emulators, onClose, onSave }) {
     executable: '',
     arguments: '',
     working_directory: '',
-    icon_path: '',
-    description: '',
+    save_path: game ? game.save_path : '',
+    icon_path: game ? game.icon_path : '',
+    background_path: game ? game.background_path : '',
+    description: game ? game.description : '',
     year: '',
     genre: '',
     developer: '',
@@ -78,6 +80,16 @@ export default function GameEditor({ game, emulators, onClose, onSave }) {
 
     onSave(gameData);
   };
+
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') {
+        onClose();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [onClose]);
 
   const handleBrowse = async (field, filters = [], isDir = false) => {
     if (!window.arcadiaAPI) return;
@@ -194,7 +206,15 @@ export default function GameEditor({ game, emulators, onClose, onSave }) {
               <label>Artwork (Icon Path)</label>
               <div style={{ display: 'flex', gap: '8px' }}>
                 <input style={{ flex: 1 }} type="text" name="icon_path" value={formData.icon_path} onChange={handleChange} tabIndex={0} placeholder="Path to cover image"/>
-                <button type="button" onClick={() => handleBrowse('icon_path', [{ name: 'Images', extensions: ['png', 'jpg', 'jpeg', 'ico'] }])} className="btn-cancel" style={{ padding: '0 12px' }}>Browse</button>
+                <button type="button" onClick={() => handleBrowse('icon_path', [{ name: 'Images', extensions: ['png', 'jpg', 'jpeg', 'ico', 'webp'] }])} className="btn-cancel" style={{ padding: '0 12px' }}>Browse</button>
+              </div>
+            </div>
+
+            <div className="form-group">
+              <label>Background Artwork (Large Cover)</label>
+              <div style={{ display: 'flex', gap: '8px' }}>
+                <input style={{ flex: 1 }} type="text" name="background_path" value={formData.background_path || ''} onChange={handleChange} tabIndex={0} placeholder="Path to large background image"/>
+                <button type="button" onClick={() => handleBrowse('background_path', [{ name: 'Images', extensions: ['png', 'jpg', 'jpeg', 'webp'] }])} className="btn-cancel" style={{ padding: '0 12px' }}>Browse</button>
               </div>
             </div>
 
