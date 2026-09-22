@@ -56,6 +56,7 @@ class ScannerService {
         this._syncMissingConfigs();
       }
 
+      dbService.persist(); // Batch persist!
       this.stats.phase = 'complete';
       this._emit();
       return { success: true, stats: { ...this.stats } };
@@ -177,7 +178,7 @@ class ScannerService {
       tags: cfg.tags || [],
       is_default: true,
       notes: cfg.notes || ''
-    });
+    }, true);
     this.stats.emulatorsDiscovered++;
   }
 
@@ -238,7 +239,7 @@ class ScannerService {
       emulator_id: parentFolder || '',
       save_path: savePath,
       source_dir: dir
-    });
+    }, true);
     this.stats.gamesDiscovered++;
   }
 

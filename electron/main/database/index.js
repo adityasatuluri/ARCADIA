@@ -135,7 +135,7 @@ class DatabaseService {
     return r ? this._fmtGame(r) : null;
   }
 
-  upsertGame(g) {
+  upsertGame(g, skipPersist = false) {
     if (!g || !g.id) throw new Error('Game must have an id');
     const now = new Date().toISOString();
     const genre = JSON.stringify(Array.isArray(g.genre) ? g.genre : []);
@@ -171,7 +171,7 @@ class DatabaseService {
         g.save_path || '', g.source_dir || '', null, 0, now, now
       ]);
     }
-    this.persist();
+    if (!skipPersist) this.persist();
     return this.getGameById(g.id);
   }
 
@@ -232,7 +232,7 @@ class DatabaseService {
     return fallback ? this._fmtEmu(fallback) : null;
   }
 
-  upsertEmulator(e) {
+  upsertEmulator(e, skipPersist = false) {
     if (!e || !e.name) throw new Error('Emulator must have a name');
     const id = e.id || e.name.toLowerCase().replace(/[^a-z0-9_-]/g, '-');
     const existing = this._row("SELECT id FROM emulators WHERE id = ?", [id]);
@@ -248,24 +248,22 @@ class DatabaseService {
       this.db.run(`UPDATE emulators SET name=?, display_name=?, platform=?, executable=?,
         working_directory=?, arguments=?, icon_path=?, description=?, version=?,
         developer=?, tags=?, is_default=?, notes=? WHERE id=?`, [
-        e.name, e.display_name || e.name, e.platform || 'Unknown',
-        e.executable, e.working_directory || '', args,
-        e.icon_path || '', e.description || '', e.version || '',
-        e.developer || '', tags, e.is_default ? 1 : 0, e.notes || '', id
+        e.name, e.display_name || e.name, e.platform || 'Unknown', e.executable || '',
+        e.working_directory || '', args, e.icon_path || '', e.description || '',
+        e.version || '', e.developer || '', tags, e.is_default ? 1 : 0, e.notes || '', id
       ]);
     } else {
+      const now = new Date().toISOString();
       this.db.run(`INSERT INTO emulators (id, name, display_name, platform, executable,
-        working_directory, arguments, icon_path, description, version,
-        developer, tags, is_default, notes, created_at)
+        working_directory, arguments, icon_path, description, version, developer, tags, is_default, notes, created_at)
         VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`, [
-        id, e.name, e.display_name || e.name, e.platform || 'Unknown',
-        e.executable, e.working_directory || '', args,
-        e.icon_path || '', e.description || '', e.version || '',
-        e.developer || '', tags, e.is_default ? 1 : 0, e.notes || '',
-        new Date().toISOString()
+        id, e.name, e.display_name || e.name, e.platform || 'Unknown', e.executable || '',
+        e.working_directory || '', args, e.icon_path || '', e.description || '',
+        e.version || '', e.developer || '', tags, e.is_default ? 1 : 0, e.notes || '', now
       ]);
     }
-    this.persist();
+
+    if (!skipPersist) this.persist();
     return this.getEmulatorById(id);
   }
 

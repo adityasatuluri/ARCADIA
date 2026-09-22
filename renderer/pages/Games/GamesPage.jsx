@@ -183,6 +183,8 @@ export default function GamesPage({
   };
 
   // ----- Filtering & Sorting Engine -----
+  const deferredSearchQuery = React.useDeferredValue(searchQuery);
+
   const processedLibrary = useMemo(() => {
     let filtered = games;
     
@@ -190,8 +192,8 @@ export default function GamesPage({
     if (hideNoArt) filtered = filtered.filter(g => g.icon_path);
 
     // 2. Search Metadata Index
-    if (searchQuery.trim()) {
-      const q = searchQuery.toLowerCase();
+    if (deferredSearchQuery.trim()) {
+      const q = deferredSearchQuery.toLowerCase();
       filtered = filtered.filter(g => {
         const textBlob = [
           g.display_name, g.platform, g.developer, g.publisher, 
@@ -223,7 +225,7 @@ export default function GamesPage({
     });
 
     return filtered;
-  }, [games, searchQuery, hideNoArt, favoritesFirst, sortBy]);
+  }, [games, deferredSearchQuery, hideNoArt, favoritesFirst, sortBy]);
 
   // Home Screen computation (Max 10 games)
   const homeGames = useMemo(() => {
