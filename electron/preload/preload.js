@@ -3,7 +3,17 @@ const { contextBridge, ipcRenderer } = require('electron');
 contextBridge.exposeInMainWorld('arcadiaAPI', {
   system: {
     ping: () => ipcRenderer.invoke('system:ping'),
-    showOpenDialog: (options) => ipcRenderer.invoke('system:show-open-dialog', options)
+    showOpenDialog: (options) => ipcRenderer.invoke('system:show-open-dialog', options),
+    showSaveDialog: (options) => ipcRenderer.invoke('system:show-save-dialog', options),
+    openDataFolder: () => ipcRenderer.invoke('system:open-data-folder'),
+    exportConfig: (targetPath) => ipcRenderer.invoke('system:export-config', targetPath),
+    importConfig: (sourcePath) => ipcRenderer.invoke('system:import-config', sourcePath),
+    resetSettings: () => ipcRenderer.invoke('system:reset-settings')
+  },
+  maintenance: {
+    rebuildDatabase: () => ipcRenderer.invoke('maintenance:rebuild-database'),
+    rebuildArtwork: () => ipcRenderer.invoke('maintenance:rebuild-artwork'),
+    runDiagnostics: () => ipcRenderer.invoke('maintenance:run-diagnostics')
   },
   launcher: {
     launch: (gameId) => ipcRenderer.invoke('launcher:launch', gameId),

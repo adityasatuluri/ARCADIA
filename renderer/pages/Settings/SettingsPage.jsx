@@ -326,19 +326,61 @@ export default function SettingsPage() {
           <h2>Storage</h2>
           <div className="settings-group">
             <div className="settings-row" style={{flexDirection: 'column', alignItems: 'flex-start'}}>
-              <span>Cache Management</span>
-              <button className="btn-secondary danger" style={{marginTop: '8px'}} onClick={() => confirmAction('Clear all cached images?', () => alert('Cache cleared.'))}>Clear Image Cache</button>
+              <span>Artwork Cache</span>
+              <p style={{fontSize: '12px', color: 'var(--text-muted)', marginTop: '4px'}}>Clears downloaded thumbnails and background art.</p>
+              <button className="btn-secondary danger" style={{marginTop: '8px'}} onClick={() => confirmAction('Rebuild Artwork Cache?', async () => {
+                await window.arcadiaAPI.maintenance.rebuildArtwork();
+                alert('Artwork cache rebuilt successfully.');
+              })}>Rebuild Artwork Cache</button>
+            </div>
+            <div className="settings-row" style={{flexDirection: 'column', alignItems: 'flex-start'}}>
+              <span>Arcadia Data Folder</span>
+              <p style={{fontSize: '12px', color: 'var(--text-muted)', marginTop: '4px'}}>Open the directory containing your configuration and database.</p>
+              <button className="btn-secondary" style={{marginTop: '8px'}} onClick={() => window.arcadiaAPI.system.openDataFolder()}>Open Data Folder</button>
             </div>
           </div>
         </div>
       );
       case 'maintenance': return (
         <div className="settings-panel">
-          <h2>Maintenance</h2>
+          <h2>Maintenance & Diagnostics</h2>
           <div className="settings-group">
             <div className="settings-row" style={{flexDirection: 'column', alignItems: 'flex-start'}}>
-              <span>Database</span>
-              <button className="btn-secondary danger" style={{marginTop: '8px'}} onClick={() => confirmAction('Rebuild database? This will rescan all files.', runScan)}>Rebuild Database</button>
+              <span>Library Scanner</span>
+              <div style={{display: 'flex', gap: '8px', marginTop: '8px'}}>
+                <button className="btn-secondary" onClick={() => confirmAction('Rescan all configured library folders?', runScan)}>Rescan Everything</button>
+              </div>
+            </div>
+            <div className="settings-row" style={{flexDirection: 'column', alignItems: 'flex-start'}}>
+              <span>Validation & Diagnostics</span>
+              <p style={{fontSize: '12px', color: 'var(--text-muted)', marginTop: '4px'}}>Validates all game configs, emulator executables, and save paths.</p>
+              <button className="btn-secondary" style={{marginTop: '8px'}} onClick={async () => {
+                const res = await window.arcadiaAPI.maintenance.runDiagnostics();
+                if (res.success) {
+                  let msg = `Diagnostics Report:\n\nGames: ${res.data.totalGames} (Invalid: ${res.data.invalidGames})\nEmulators: ${res.data.totalEmulators} (Invalid: ${res.data.invalidEmulators})\nInvalid Saves: ${res.data.invalidSaves}\n\n`;
+                  if (res.data.warnings.length > 0) {
+                    msg += "Warnings:\n" + res.data.warnings.slice(0, 10).join('\n');
+                    if (res.data.warnings.length > 10) msg += `\n...and ${res.data.warnings.length - 10} more.`;
+                  } else {
+                    msg += "No issues found!";
+                  }
+                  alert(msg);
+                }
+              }}>Run Diagnostics</button>
+            </div>
+            <div className="settings-row" style={{flexDirection: 'column', alignItems: 'flex-start'}}>
+              <span style={{color: 'var(--accent-danger)'}}>Danger Zone</span>
+              <div style={{display: 'flex', gap: '8px', marginTop: '8px'}}>
+                <button className="btn-secondary danger" onClick={() => confirmAction('Wipe the database and rescan from scratch? This will clear all favorites and play history.', async () => {
+                  setScanStatus('Rebuilding Database...');
+                  await window.arcadiaAPI.maintenance.rebuildDatabase();
+                  setScanStatus('Database rebuilt successfully.');
+                })}>Rebuild Database</button>
+                <button className="btn-secondary danger" onClick={() => confirmAction('Reset all settings to default values?', async () => {
+                  await window.arcadiaAPI.system.resetSettings();
+                  alert('Settings reset. Please restart Arcadia.');
+                })}>Reset Settings</button>
+              </div>
             </div>
           </div>
         </div>
@@ -376,6 +418,25 @@ export default function SettingsPage() {
             <div className="settings-row" style={{flexDirection: 'column', alignItems: 'flex-start', color: 'var(--text-muted)'}}>
               <span>Arcadia Version 1.0.0</span>
               <span>Advanced Emulator Frontend UI</span>
+            </div>
+            <div className="settings-row" style={{flexDirection: 'column', alignItems: 'flex-start'}}>
+              <span>Configuration Data</span>
+              <div style={{display: 'flex', gap: '8px', marginTop: '8px'}}>
+                <button className="btn-secondary" onClick={async () => {
+                  const targetPath = await window.arcadiaAPI.system.showSaveDialog({ defaultPath: 'arcadia_config.json', filters: [{name: 'JSON', extensions: ['json']}] });
+                  if (targetPath) {
+                    await window.arcadiaAPI.system.exportConfig(targetPath);
+                    alert('Configuration exported successfully.');
+                  }
+                }}>Export Configuration</button>
+                <button className="btn-secondary" onClick={async () => {
+                  const sourcePath = await window.arcadiaAPI.system.showOpenDialog({ filters: [{name: 'JSON', extensions: ['json']}] });
+                  if (sourcePath) {
+                    await window.arcadiaAPI.system.importConfig(sourcePath);
+                    alert('Configuration imported successfully. Please restart Arcadia.');
+                  }
+                }}>Import Configuration</button>
+              </div>
             </div>
           </div>
         </div>

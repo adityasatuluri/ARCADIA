@@ -3,6 +3,7 @@ const dbService = require('../database/index.js');
 const scannerService = require('../scanner/index.js');
 const launcherService = require('../launcher/index.js');
 const savesService = require('../saves/index.js');
+const maintenanceService = require('../maintenance/index.js');
 
 function registerIpcHandlers() {
 
@@ -16,7 +17,23 @@ function registerIpcHandlers() {
     return filePaths[0];
   });
 
+  ipcMain.handle('system:show-save-dialog', async (event, options = {}) => {
+    const win = BrowserWindow.fromWebContents(event.sender);
+    const { canceled, filePath } = await dialog.showSaveDialog(win, options);
+    if (canceled || !filePath) return null;
+    return filePath;
+  });
 
+  ipcMain.handle('system:open-data-folder', () => maintenanceService.openDataFolder());
+  
+  ipcMain.handle('system:export-config', async (_, targetPath) => maintenanceService.exportConfig(targetPath));
+  ipcMain.handle('system:import-config', async (_, sourcePath) => maintenanceService.importConfig(sourcePath));
+  ipcMain.handle('system:reset-settings', async () => maintenanceService.resetSettings());
+
+  /* ======== MAINTENANCE ======== */
+  ipcMain.handle('maintenance:rebuild-database', async () => maintenanceService.rebuildDatabase());
+  ipcMain.handle('maintenance:rebuild-artwork', async () => maintenanceService.rebuildArtworkCache());
+  ipcMain.handle('maintenance:run-diagnostics', async () => maintenanceService.runDiagnostics());
 
   /* ======== LAUNCHER ======== */
   ipcMain.handle('launcher:launch', async (event, gameId) => {
