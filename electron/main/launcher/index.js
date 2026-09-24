@@ -144,6 +144,7 @@ class LauncherService {
         let token = match[1] ? match[1] : match[0];
         // Replace token safely AFTER splitting so spaces in the path don't break parsing
         token = token.replace(/{game_path}/g, game.game_path || '');
+        token = token.replace(/{emu_dir}/g, cwd || '');
         args.push(token);
       }
     }
@@ -254,6 +255,7 @@ class LauncherService {
         let token = match[1] ? match[1] : match[0];
         // For pure emulator launch without a game, strip out the game_path token entirely if present
         token = token.replace(/{game_path}/g, '');
+        token = token.replace(/{emu_dir}/g, cwd || '');
         if (token.trim() !== '') args.push(token);
       }
     }

@@ -37,14 +37,44 @@ if (!gotTheLock) {
   }
 
   app.whenReady().then(async () => {
+    // === PORTABLE MODE: Detect drive letter ===
+    const isDev = process.env.NODE_ENV !== 'production' && !app.isPackaged;
+    let dataDir;
+    let driveLetter;
+
+    if (isDev) {
+      // In dev mode, use the project directory's drive
+      driveLetter = path.parse(__dirname).root; // e.g. "D:\"
+      dataDir = app.getPath('userData'); // Use standard Electron path for dev
+    } else {
+      // In production (packaged)
+      // For NSIS portable builds, app.getPath('exe') points to a Temp folder on C:
+      // We must use PORTABLE_EXECUTABLE_DIR if it exists
+      const originalExeDir = process.env.PORTABLE_EXECUTABLE_DIR || path.dirname(app.getPath('exe'));
+      driveLetter = path.parse(originalExeDir).root; // e.g. "Z:\"
+      dataDir = path.join(driveLetter, 'ArcadiaData');
+    }
+
+    // Store drive letter globally so database service can use it for path resolution
+    global.arcadiaDrive = driveLetter;
+    console.log(`[Main] Portable mode — Drive: ${driveLetter}, Data: ${dataDir}`);
+
     // Initialize services
-    let isFullscreen = true; // Default
+    let isFullscreen = true;
     try {
-      const userDataPath = app.getPath('userData');
       const dbService = require('./database/index.js');
-      await dbService.init(userDataPath);
-      
-      const fsSetting = await dbService.getSetting('fullscreen');
+      await dbService.init(dataDir);
+
+      // Auto-set library path on first boot
+      const libs = dbService.getSetting('library_locations');
+      if (!libs || (Array.isArray(libs) && libs.length === 0)) {
+        const gamingPath = path.join(driveLetter, 'gaming');
+        dbService.setSetting('library_locations', [gamingPath]);
+        console.log(`[Main] Auto-set library path: ${gamingPath}`);
+      }
+
+      // Read fullscreen preference
+      const fsSetting = dbService.getSetting('fullscreen');
       if (fsSetting !== undefined && fsSetting !== null) {
         if (typeof fsSetting === 'string') {
           isFullscreen = fsSetting === 'true';
@@ -52,13 +82,12 @@ if (!gotTheLock) {
           isFullscreen = !!fsSetting;
         }
       }
-      
+
       console.log('[Main] Services initialized.');
     } catch (err) {
       console.error('[Main] Init failed:', err);
     }
-    
-    // Store in global or pass to createWindow
+
     global.startupFullscreen = isFullscreen;
 
     // Register IPC

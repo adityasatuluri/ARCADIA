@@ -9,7 +9,8 @@ contextBridge.exposeInMainWorld('arcadiaAPI', {
     exportConfig: (targetPath) => ipcRenderer.invoke('system:export-config', targetPath),
     importConfig: (sourcePath) => ipcRenderer.invoke('system:import-config', sourcePath),
     resetSettings: () => ipcRenderer.invoke('system:reset-settings'),
-    setFullscreen: (val) => ipcRenderer.invoke('system:set-fullscreen', val)
+    setFullscreen: (val) => ipcRenderer.invoke('system:set-fullscreen', val),
+    getDriveInfo: () => ipcRenderer.invoke('system:get-drive-info')
   },
   maintenance: {
     rebuildDatabase: () => ipcRenderer.invoke('maintenance:rebuild-database'),

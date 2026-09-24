@@ -14,6 +14,21 @@ const IGNORED_DIRS = new Set([
   'bios', 'sys', 'system', 'cores'
 ]);
 
+// Known emulator argument templates so games launch correctly without manual config.
+// {game_path} is replaced with the full path to the ROM/ISO at launch time.
+const KNOWN_EMULATOR_DEFAULTS = {
+  'xemu':    { arguments: '-bootrom "{emu_dir}/Xbox-Emulator-Files/mcpx_1.0.bin" -flash "{emu_dir}/Xbox-Emulator-Files/Complex_4627.bin" -hdd "{emu_dir}/Xbox-Emulator-Files/xbox_hdd.qcow2" -dvd_path "{game_path}"', platform: 'Xbox' },
+  'rpcs3':   { arguments: '--no-gui "{game_path}"', platform: 'PS3' },
+  'pcsx2':   { arguments: '"{game_path}"', platform: 'PS2' },
+  'dolphin': { arguments: '-e "{game_path}"', platform: 'GameCube' },
+  'cemu':    { arguments: '-g "{game_path}"', platform: 'Wii U' },
+  'yuzu':    { arguments: '"{game_path}"', platform: 'Switch' },
+  'ryujinx': { arguments: '"{game_path}"', platform: 'Switch' },
+  'citra':   { arguments: '"{game_path}"', platform: '3DS' },
+  'ppsspp':  { arguments: '"{game_path}"', platform: 'PSP' },
+  'duckstation': { arguments: '"{game_path}"', platform: 'PS1' },
+};
+
 class ScannerService {
   constructor() {
     this.isScanning = false;
@@ -121,9 +136,15 @@ class ScannerService {
         this._registerGame(configData, dir, iconFile, gameFiles);
       }
     } else if (gameFiles.length > 0) {
-      for (const gf of gameFiles) {
-        let gameName = path.basename(gf, path.extname(gf));
-        let parentName = path.basename(dir);
+      // If there's no config.json, only add games if we're NOT anywhere inside a "pc" folder.
+      // We want to skip raw .exe/.bin files inside PC game directories unless explicitly configured.
+      const pathSegments = dir.toLowerCase().split(path.sep);
+      const isPcFolder = pathSegments.includes('pc');
+      
+      if (!isPcFolder) {
+        for (const gf of gameFiles) {
+          let gameName = path.basename(gf, path.extname(gf));
+          let parentName = path.basename(dir);
         
         // PKG files or giant hashes usually mean the file name is garbage.
         // In these cases, the parent folder is the REAL game name, and the grandparent is the platform.
@@ -138,6 +159,7 @@ class ScannerService {
           platform: parentName,
           largecover: bgFile || ''
         }, dir, iconFile, [gf]);
+        }
       }
     }
 
@@ -163,14 +185,33 @@ class ScannerService {
     const id = cfg.name || path.basename(dir).toLowerCase();
     this.discoveredEmulatorIds.add(id);
 
+    // Auto-apply known emulator defaults for arguments and platform
+    let emuArgs = cfg.arguments || '';
+    let emuPlatform = cfg.platform || 'Unknown';
+    
+    // Match against known emulator names (fuzzy: "xemu" matches "xemu", "xemu-win64", etc.)
+    const idLower = id.toLowerCase();
+    for (const [knownName, defaults] of Object.entries(KNOWN_EMULATOR_DEFAULTS)) {
+      if (idLower.includes(knownName)) {
+        if (!emuArgs || emuArgs.trim() === '') {
+          emuArgs = defaults.arguments;
+          console.log(`[Scanner] Auto-set ${knownName} arguments: ${emuArgs}`);
+        }
+        if (emuPlatform === 'Unknown' || emuPlatform.toLowerCase() === 'emulator') {
+          emuPlatform = defaults.platform;
+        }
+        break;
+      }
+    }
+
     dbService.upsertEmulator({
       id: id,
       name: cfg.name || path.basename(dir),
       display_name: cfg.display_name || cfg.name || path.basename(dir),
-      platform: cfg.platform || 'Unknown',
+      platform: emuPlatform,
       executable: exe,
       working_directory: cfg.working_directory === '.' ? dir : (cfg.working_directory || dir),
-      arguments: cfg.arguments || '',
+      arguments: emuArgs,
       icon_path: icon,
       description: cfg.description || '',
       version: cfg.version || '',

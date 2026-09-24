@@ -1,1 +1,35 @@
-node_modules
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Node modules
+node_modules/
+.npm
+
+# Build outputs
+dist/
+release/
+release-new/
+out/
+build/
+.dist/
+
+# Arcadia Data (Local)
+.arcadia_data/
+ArcadiaData/
+
+# IDEs and Editors
+.idea/
+.vscode/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# OS metadata
+.DS_Store
+Thumbs.db

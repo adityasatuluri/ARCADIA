@@ -2,6 +2,12 @@ const fs = require('fs');
 const path = require('path');
 const initSqlJs = require('sql.js');
 
+const DRIVE_TOKEN = '{DRIVE}';
+
+// Path fields that need portable path conversion
+const GAME_PATH_FIELDS = ['game_path', 'executable', 'working_directory', 'icon_path', 'background_path', 'save_path', 'source_dir'];
+const EMU_PATH_FIELDS = ['executable', 'working_directory', 'icon_path'];
+
 class DatabaseService {
   constructor() {
     this.db = null;
@@ -45,6 +51,66 @@ class DatabaseService {
     } catch (err) {
       console.error('[DB] Failed to persist:', err);
     }
+  }
+
+  /* ============ PORTABLE PATH HELPERS ============ */
+  
+  /**
+   * Convert an absolute path to a portable path by replacing the drive letter with {DRIVE}.
+   * Only replaces if the path is on the same drive as the application.
+   * E.g. "Z:\gaming\ps2\game.iso" → "{DRIVE}\gaming\ps2\game.iso"
+   */
+  toPortablePath(absPath) {
+    if (!absPath || typeof absPath !== 'string') return absPath;
+    const drive = global.arcadiaDrive;
+    if (!drive) return absPath; // No drive detected, store as-is
+
+    // Normalize both to compare (handle Z:\ vs Z:/ vs z:\)
+    const normalizedDrive = drive.replace(/\//g, '\\').toLowerCase();
+    const normalizedPath = absPath.replace(/\//g, '\\');
+    
+    if (normalizedPath.toLowerCase().startsWith(normalizedDrive)) {
+      return DRIVE_TOKEN + normalizedPath.substring(normalizedDrive.length - 1); // Keep the backslash
+    }
+    return absPath; // Path is on a different drive, store as absolute
+  }
+
+  /**
+   * Convert a portable path back to an absolute path using the current drive letter.
+   * E.g. "{DRIVE}\gaming\ps2\game.iso" → "E:\gaming\ps2\game.iso"
+   */
+  toAbsolutePath(portablePath) {
+    if (!portablePath || typeof portablePath !== 'string') return portablePath;
+    if (!portablePath.startsWith(DRIVE_TOKEN)) return portablePath;
+    
+    const drive = global.arcadiaDrive;
+    if (!drive) return portablePath; // Can't resolve, return as-is
+    
+    // {DRIVE}\gaming\... → Z:\gaming\...
+    const driveRoot = drive.replace(/\//g, '\\').replace(/\\$/, ''); // "Z:"
+    return driveRoot + portablePath.substring(DRIVE_TOKEN.length);
+  }
+
+  /**
+   * Apply toPortablePath to all path fields of an object.
+   */
+  _makePortable(obj, fields) {
+    if (!obj) return obj;
+    for (const f of fields) {
+      if (obj[f]) obj[f] = this.toPortablePath(obj[f]);
+    }
+    return obj;
+  }
+
+  /**
+   * Apply toAbsolutePath to all path fields of an object.
+   */
+  _resolvePortable(obj, fields) {
+    if (!obj) return obj;
+    for (const f of fields) {
+      if (obj[f]) obj[f] = this.toAbsolutePath(obj[f]);
+    }
+    return obj;
   }
 
   _initSchema() {
@@ -142,19 +208,23 @@ class DatabaseService {
     const tags = JSON.stringify(Array.isArray(g.tags) ? g.tags : []);
     const existing = this._row("SELECT id FROM games WHERE id = ?", [g.id]);
 
+    // Convert all path fields to portable format before storing
+    const p = { ...g };
+    this._makePortable(p, GAME_PATH_FIELDS);
+
     if (existing) {
       this.db.run(`UPDATE games SET name=?, display_name=?, type=?, platform=?, game_path=?,
         executable=?, arguments=?, working_directory=?,
         icon_path=?, background_path=?, description=?, year=?, genre=?, developer=?, publisher=?, tags=?,
         favorite=?, notes=?, emulator_id=?, save_path=?, source_dir=?, updated_at=?
         WHERE id=?`, [
-        g.name || g.id, g.display_name || g.name || 'Untitled',
-        g.type || 'emulator', g.platform || 'Unknown', g.game_path || '',
-        g.executable || '', g.arguments || '', g.working_directory || '',
-        g.icon_path || '', g.background_path || '', g.description || '', g.year || null,
-        genre, g.developer || '', g.publisher || '', tags,
-        g.favorite ? 1 : 0, g.notes || '', g.emulator_id || '',
-        g.save_path || '', g.source_dir || '', now, g.id
+        p.name || p.id, p.display_name || p.name || 'Untitled',
+        p.type || 'emulator', p.platform || 'Unknown', p.game_path || '',
+        p.executable || '', p.arguments || '', p.working_directory || '',
+        p.icon_path || '', p.background_path || '', p.description || '', p.year || null,
+        genre, p.developer || '', p.publisher || '', tags,
+        p.favorite ? 1 : 0, p.notes || '', p.emulator_id || '',
+        p.save_path || '', p.source_dir || '', now, p.id
       ]);
     } else {
       this.db.run(`INSERT INTO games (id, name, display_name, type, platform, game_path,
@@ -162,13 +232,13 @@ class DatabaseService {
         icon_path, background_path, description, year, genre, developer, publisher, tags,
         favorite, notes, emulator_id, save_path, source_dir, last_played, play_count, created_at, updated_at)
         VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`, [
-        g.id, g.name || g.id, g.display_name || g.name || 'Untitled',
-        g.type || 'emulator', g.platform || 'Unknown', g.game_path || '',
-        g.executable || '', g.arguments || '', g.working_directory || '',
-        g.icon_path || '', g.background_path || '', g.description || '', g.year || null,
-        genre, g.developer || '', g.publisher || '', tags,
-        g.favorite ? 1 : 0, g.notes || '', g.emulator_id || '',
-        g.save_path || '', g.source_dir || '', null, 0, now, now
+        p.id, p.name || p.id, p.display_name || p.name || 'Untitled',
+        p.type || 'emulator', p.platform || 'Unknown', p.game_path || '',
+        p.executable || '', p.arguments || '', p.working_directory || '',
+        p.icon_path || '', p.background_path || '', p.description || '', p.year || null,
+        genre, p.developer || '', p.publisher || '', tags,
+        p.favorite ? 1 : 0, p.notes || '', p.emulator_id || '',
+        p.save_path || '', p.source_dir || '', null, 0, now, now
       ]);
     }
     if (!skipPersist) this.persist();
@@ -202,12 +272,15 @@ class DatabaseService {
     let genre = [], tags = [];
     try { genre = JSON.parse(r.genre || '[]'); } catch { genre = []; }
     try { tags = JSON.parse(r.tags || '[]'); } catch { tags = []; }
-    return {
+    const obj = {
       ...r,
       genre, tags,
       favorite: Boolean(r.favorite),
       play_count: r.play_count || 0
     };
+    // Resolve portable paths to absolute paths for the current drive
+    this._resolvePortable(obj, GAME_PATH_FIELDS);
+    return obj;
   }
 
   /* ============ EMULATORS ============ */
@@ -244,22 +317,26 @@ class DatabaseService {
       this.db.run("UPDATE emulators SET is_default=0 WHERE LOWER(platform)=?", [(e.platform || '').toLowerCase()]);
     }
 
+    // Convert path fields to portable format before storing
+    const p = { ...e };
+    this._makePortable(p, EMU_PATH_FIELDS);
+
     if (existing) {
       this.db.run(`UPDATE emulators SET name=?, display_name=?, platform=?, executable=?,
         working_directory=?, arguments=?, icon_path=?, description=?, version=?,
         developer=?, tags=?, is_default=?, notes=? WHERE id=?`, [
-        e.name, e.display_name || e.name, e.platform || 'Unknown', e.executable || '',
-        e.working_directory || '', args, e.icon_path || '', e.description || '',
-        e.version || '', e.developer || '', tags, e.is_default ? 1 : 0, e.notes || '', id
+        p.name, p.display_name || p.name, p.platform || 'Unknown', p.executable || '',
+        p.working_directory || '', args, p.icon_path || '', p.description || '',
+        p.version || '', p.developer || '', tags, p.is_default ? 1 : 0, p.notes || '', id
       ]);
     } else {
       const now = new Date().toISOString();
       this.db.run(`INSERT INTO emulators (id, name, display_name, platform, executable,
         working_directory, arguments, icon_path, description, version, developer, tags, is_default, notes, created_at)
         VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`, [
-        id, e.name, e.display_name || e.name, e.platform || 'Unknown', e.executable || '',
-        e.working_directory || '', args, e.icon_path || '', e.description || '',
-        e.version || '', e.developer || '', tags, e.is_default ? 1 : 0, e.notes || '', now
+        id, p.name, p.display_name || p.name, p.platform || 'Unknown', p.executable || '',
+        p.working_directory || '', args, p.icon_path || '', p.description || '',
+        p.version || '', p.developer || '', tags, p.is_default ? 1 : 0, p.notes || '', now
       ]);
     }
 
@@ -276,7 +353,10 @@ class DatabaseService {
   _fmtEmu(r) {
     let tags = [];
     try { tags = JSON.parse(r.tags || '[]'); } catch { tags = []; }
-    return { ...r, tags, is_default: Boolean(r.is_default) };
+    const obj = { ...r, tags, is_default: Boolean(r.is_default) };
+    // Resolve portable paths to absolute paths for the current drive
+    this._resolvePortable(obj, EMU_PATH_FIELDS);
+    return obj;
   }
 
   getGamesForEmulator(emuId) {

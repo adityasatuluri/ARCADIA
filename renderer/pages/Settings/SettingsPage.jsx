@@ -33,6 +33,7 @@ export default function SettingsPage() {
   const [scanStatus, setScanStatus] = useState('');
   const [isScanning, setIsScanning] = useState(false);
   const [progressData, setProgressData] = useState(null);
+  const [driveInfo, setDriveInfo] = useState({ drive: '', dataDir: '' });
   
   const { theme, toggleTheme } = useTheme();
 
@@ -74,6 +75,11 @@ export default function SettingsPage() {
           if (allSettings.data.library_locations && (!libs.success || !libs.data)) {
             setLibraryPaths(allSettings.data.library_locations);
           }
+        }
+        
+        if (window.arcadiaAPI.system && window.arcadiaAPI.system.getDriveInfo) {
+          const info = await window.arcadiaAPI.system.getDriveInfo();
+          setDriveInfo(info);
         }
       }
     }
@@ -278,6 +284,16 @@ export default function SettingsPage() {
         <div className="settings-panel">
           <h2>Game Library</h2>
           <div className="settings-group">
+            {driveInfo.drive && (
+              <div className="settings-row" style={{flexDirection: 'column', alignItems: 'flex-start', background: 'var(--bg-surface-active)'}}>
+                <span style={{color: 'var(--accent-primary)', fontWeight: 'bold'}}>Portable Mode Active</span>
+                <div style={{fontSize: '12px', color: 'var(--text-muted)', marginTop: '4px'}}>
+                  <p><strong>App Drive:</strong> {driveInfo.drive}</p>
+                  <p><strong>Data Folder:</strong> {driveInfo.dataDir}</p>
+                  <p style={{marginTop: '4px'}}>All game paths on this drive are stored dynamically. If the drive letter changes, your games will still work.</p>
+                </div>
+              </div>
+            )}
             <div className="settings-row" style={{flexDirection: 'column', alignItems: 'flex-start'}}>
               <span>Library Locations</span>
               <div className="library-paths-list" style={{width: '100%', marginTop: '8px'}}>

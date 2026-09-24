@@ -10,6 +10,13 @@ function registerIpcHandlers() {
   /* ======== SYSTEM ======== */
   ipcMain.handle('system:ping', () => 'pong-from-main');
   
+  ipcMain.handle('system:get-drive-info', () => {
+    return {
+      drive: global.arcadiaDrive || '',
+      dataDir: dbService.dbPath ? require('path').dirname(dbService.dbPath) : ''
+    };
+  });
+  
   ipcMain.handle('system:show-open-dialog', async (event, options = {}) => {
     const win = BrowserWindow.fromWebContents(event.sender);
     const { canceled, filePaths } = await dialog.showOpenDialog(win, options);
